@@ -27,4 +27,6 @@ typedef struct RFC_db_rec_ {
 extern RFC_db_rec *rfc_db_head;
 extern void generate_RFC_Database(int,int);
 extern void print_RFC_Database();
+extern int create_server(int);
+extern int create_client (char *,int);
 #endif
