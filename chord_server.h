@@ -1,3 +1,5 @@
+#ifndef ONLY_ONCE
+#define ONLY_ONCE
 #define FALSE 0
 #define TRUE 1
 
@@ -9,7 +11,7 @@
 #define PEER_P0_IP "127.0.0.1"
 #define PEER_P0_PORT 5000
 
-int is_p0 = FALSE;
+extern int is_p0;
 
 typedef struct RFC_db_rec_ {
 
@@ -22,5 +24,7 @@ typedef struct RFC_db_rec_ {
 
 }RFC_db_rec;
 
-RFC_db_rec *rfc_db_head=0;
-
+extern RFC_db_rec *rfc_db_head;
+extern void generate_RFC_Database(int,int);
+extern void print_RFC_Database();
+#endif

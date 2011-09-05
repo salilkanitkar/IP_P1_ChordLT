@@ -1,4 +1,4 @@
-SRCS =  chord_server.c 
+SRCS =  chord_server.c chord_util.c
 INC = chord_server.h 
 OBJS = $(SRCS:.c=.o)
 

@@ -4,6 +4,9 @@
 
 #include "chord_server.h"
 
+RFC_db_rec *rfc_db_head = 0;
+int is_p0 = FALSE;	
+
 int main(int argc, char *argv[])
 {
 	if (argc > 2) {
@@ -25,6 +28,8 @@ int main(int argc, char *argv[])
 	if (is_p0 == TRUE) {
 		/* Intialize the RFC Database. RFC Database is a Linked List. Intially Node P0 will contain the entire Database */
 		printf("Initializing RFC Database\n");
+		generate_RFC_Database(1000,6000);
+		print_RFC_Database();
 	}
 
 	printf("test print\n");
