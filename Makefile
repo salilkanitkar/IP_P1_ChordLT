@@ -5,8 +5,13 @@ OBJS = $(SRCS:.c=.o)
 CFLAGS = -Wall -Werror -I.
 LDFLAGS = -L.
 EXTRA_CFLAGS = -g
+DEBUG=0 
 
 CC = gcc
+
+ifeq ($(DEBUG),1)
+EXTRA_CFLAGS += -DDEBUG_FLAG
+endif
 
 all: myserver 
 
