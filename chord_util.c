@@ -5,12 +5,18 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <string.h>
-#include <sys/socket.h>
+
 #include <sys/types.h>
-#include "chord_server.h"
-#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <errno.h>
 #include <pthread.h>
+
+#include "chord_server.h"
 
 void print_RFC_Database ()
 {
@@ -19,16 +25,22 @@ void print_RFC_Database ()
 	printf("\nThe RFC Database: \n");
 	while(p!=NULL)
 	{
-		printf("KEY : %d \n",p->key);
+		printf("Key : %d Value:%d \n",p->key, p->value);
 		p=p->next;
 	}
 	printf("\n");
 }
 
+int generate_random_number(int start, int end)
+{
+	return ( (rand()%(end - start)) + start ) ;
+}
+
+
 void generate_RFC_Database (int start, int end)
 {
 #ifdef DEBUG_FLAG
-printf("Inside RFC Generate Database \n");
+printf("Enter generate_RFC_database \n");
 #endif
 
 	long int seed;
@@ -42,26 +54,36 @@ printf("Inside RFC Generate Database \n");
         srand(seed);
 
 	for(i=0; i<50; i++){
-		rndm = rand()%(end - start) + start;
+
+		rndm = generate_random_number(start, end);
 		#ifdef DEBUG_FLAG
-		printf("RNDM : %d    %d \n",rndm, rndm%1024);
+		printf("%d %d \n",rndm, rndm%1024);
 		#endif
+
 		p = (RFC_db_rec *)malloc(sizeof(RFC_db_rec));
-		
+		if (!p) {
+			printf("Error while allocating memory!!\n");
+			exit(-1);
+		}		
 		p->next = NULL;
 		p->key = (int)rndm % 1024;
         	p->value = (int)rndm;
-		strcpy(p->RFC_title, "h");
-        	strcpy(p->RFC_body, "b");
+		sprintf(p->RFC_title, "ID:%d Value:%d", p->key, p->value);
+        	sprintf(p->RFC_body, "ID:%d Value:%d \n<<RFC Text Goes Here>>", p->key, p->value);
 
-		if ( rfc_db_head == NULL) { 
+		if ( rfc_db_head == NULL) {
 			rfc_db_head = p;
 			q = p;
 		} else {
 			q->next=p;
 			q=q->next;
-		}				
+		}
+
 	}	
+
+#ifdef DEBUG_FLAG
+printf("Exit generate_RFC_database \n");
+#endif
 
 }
 
@@ -70,19 +92,16 @@ int create_server(int server_port)
         int server_fd, new_fd, set = 1;
         struct sockaddr_in server_addr, client_addr;
         socklen_t addr_len = 0;
-//        pid_t pid;
         char p[50];
 
-	pthread_t thread_id; //dynamic list of thread ids for the client threads
-	pthread_attr_t attr; //thread attributes
-	pthread_attr_init(&attr); //initialise thread attributes
-	int thread_count = 0; //no. of threads serviced
-//	int param; //this will either be the RFC id or the chord ID - not clear
+	pthread_t thread_id;
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	int thread_count = 0;
 
         /* Standard server side socket sequence*/
 
-        if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        {
+        if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)  {
                 fprintf(stdout, "socket() failure\n");
                 return -1;
         }
@@ -173,4 +192,63 @@ int create_client(char *address, int port)
         fprintf(stderr,"ERROR connecting");
     return sockfd;
 
+}
+
+void get_my_public_ip()
+{
+
+	struct ifaddrs *myaddrs, *ifa;
+	void *in_addr;
+	char buf[64];
+
+	if(getifaddrs(&myaddrs) != 0) {
+		printf("getifaddrs failed! \n");
+		exit(-1);
+	}
+
+	for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
+
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		if (!(ifa->ifa_flags & IFF_UP))
+			continue;
+
+		switch (ifa->ifa_addr->sa_family) {
+        
+			case AF_INET: { 
+				struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+				in_addr = &s4->sin_addr;
+				break;
+			}
+
+			case AF_INET6: {
+				struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+				in_addr = &s6->sin6_addr;
+				break;
+			}
+
+			default:
+				continue;
+		}
+
+		if (inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf))) {
+			if ( ifa->ifa_addr->sa_family == AF_INET && strcmp(ifa->ifa_name, "lo")!=0 ) {
+				sprintf(peer_info.ip_addr, "%s", buf);
+				sprintf(peer_info.iface_name, "%s", ifa->ifa_name);
+			}
+		}
+	}
+
+	freeifaddrs(myaddrs);
+
+	#ifdef DEBUG_FLAG
+	printf("My public interface and IP is:  %s %s\n", peer_info.iface_name, peer_info.ip_addr);
+	#endif
+
+}
+
+void server_listen()
+{
+	get_my_public_ip();	
 }

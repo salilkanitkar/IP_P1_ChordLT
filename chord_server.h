@@ -24,10 +24,23 @@ typedef struct RFC_db_rec_ {
 
 }RFC_db_rec;
 
+typedef struct peer_info_t_ {
+
+	int chord_id;
+	int successor;
+	int listen_port;
+
+	char iface_name[64];
+	char ip_addr[128];
+
+}peer_info_t;
+
 extern RFC_db_rec *rfc_db_head;
 extern void generate_RFC_Database(int,int);
 extern void print_RFC_Database();
 extern int create_server(int);
 extern int create_client (char *,int);
+extern peer_info_t peer_info;
+extern void server_listen();
 extern void * lookup(); //will take void * as param
 #endif

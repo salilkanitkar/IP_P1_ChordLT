@@ -6,6 +6,7 @@
 
 RFC_db_rec *rfc_db_head = 0;
 int is_p0 = FALSE;	
+peer_info_t peer_info;
 
 int main(int argc, char *argv[])
 {
@@ -26,13 +27,16 @@ int main(int argc, char *argv[])
 	}
 
 	if (is_p0 == TRUE) {
-		/* Intialize the RFC Database. RFC Database is a Linked List. Intially Node P0 will contain the entire Database */
-		printf("Initializing RFC Database\n");
+		/* Initialize the RFC Database. RFC Database is a Linked List. Intially Node P0 will contain the entire Database */
+		printf("Initializing RFC Database.....\n");
 		generate_RFC_Database(1000,6000);
+		#ifdef DEBUG_FLAG
 		print_RFC_Database();
+		#endif
 	}
 
-	printf("test print\n");
+	server_listen();
+
 	return(0);
 }
 
