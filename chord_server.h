@@ -29,4 +29,5 @@ extern void generate_RFC_Database(int,int);
 extern void print_RFC_Database();
 extern int create_server(int);
 extern int create_client (char *,int);
+extern void * lookup(); //will take void * as param
 #endif

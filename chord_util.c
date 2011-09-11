@@ -10,7 +10,7 @@
 #include "chord_server.h"
 #include <arpa/inet.h>
 #include <netdb.h>
-
+#include <pthread.h>
 
 void print_RFC_Database ()
 {
@@ -72,6 +72,13 @@ int create_server(int server_port)
         socklen_t addr_len = 0;
 //        pid_t pid;
         char p[50];
+
+	pthread_t thread_id; //dynamic list of thread ids for the client threads
+	pthread_attr_t attr; //thread attributes
+	pthread_attr_init(&attr); //initialise thread attributes
+	int thread_count = 0; //no. of threads serviced
+//	int param; //this will either be the RFC id or the chord ID - not clear
+
         /* Standard server side socket sequence*/
 
         if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -119,12 +126,23 @@ int create_server(int server_port)
                 fprintf(stdout, "new connection accepted\n");
                 
                 //Create a Thread to handle this new request
-
+		pthread_create(&thread_id, &attr, lookup, NULL); //NULL will be replaced by param
+		thread_count++;
+		
         }
 
         return 0;
 }
 
+/* This is starting point of the lookup */
+void * lookup() 
+{
+	//int chord_id = (int) param;
+
+	//further processing on chord_id
+	
+	pthread_exit(NULL);
+}
 
 int create_client(char *address, int port)
 {

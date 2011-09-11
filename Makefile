@@ -20,10 +20,10 @@ myserver: mycompile mylink
 mycompile: $(OBJS) $(INC)
 
 %.o: %.c $(INC)
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -lpthread -o $@ -c $<
 
 mylink: $(OBJS) $(INC)
-	$(CC) -o chord_peer $(CFLAGS) $(EXTRA_CFLAGS) $(OBJS)
+	$(CC) -lpthread -o chord_peer $(CFLAGS) $(EXTRA_CFLAGS) $(OBJS)
 
 clean:
 	rm -f $(OBJS) chord_peer *~
