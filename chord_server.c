@@ -5,8 +5,10 @@
 #include "chord_server.h"
 
 RFC_db_rec *rfc_db_head = 0;
-int is_p0 = FALSE;	
 peer_info_t peer_info;
+int is_p0 = FALSE;
+int well_known_socket=-1;
+int well_known_port=0;
 
 int main(int argc, char *argv[])
 {
@@ -27,16 +29,36 @@ int main(int argc, char *argv[])
 	}
 
 	if (is_p0 == TRUE) {
+
 		/* Initialize the RFC Database. RFC Database is a Linked List. Intially Node P0 will contain the entire Database */
 		printf("Initializing RFC Database.....\n");
 		generate_RFC_Database(1000,6000);
 		#ifdef DEBUG_FLAG
 		print_RFC_Database();
 		#endif
+
+		populate_public_ip();
+		well_known_port = CHORD_PORT;
+		populate_port_num();
+
+		printf("\n");
+		printf("Node P0 is listening of following IP address and Port Number: \n");
+		printf("IP Address: %s  Port Num: %d\n", peer_info.ip_addr, peer_info.portnum);
+
+		//server_listen();
+
+	} else {
+
+		populate_public_ip();
+		well_known_port = CHORD_PORT;
+		populate_port_num();
+
+		//send generate_chord_id msg to P0 - include my ip and myport in this msg
+		//receive chordid & successor from P0
+
 	}
 
-	server_listen();
-
+	printf("\n");
 	return(0);
 }
 

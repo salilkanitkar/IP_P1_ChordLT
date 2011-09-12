@@ -8,10 +8,11 @@
 #define RFC_TITLE_LEN_MAX 512
 #define RFC_BODY_LEN_MAX 1 << 20
 
-#define PEER_P0_IP "127.0.0.1"
-#define PEER_P0_PORT 5000
+#define CHORD_PORT 5000
 
 extern int is_p0;
+extern int well_known_socket;
+extern int well_known_port;
 
 typedef struct RFC_db_rec_ {
 
@@ -28,7 +29,7 @@ typedef struct peer_info_t_ {
 
 	int chord_id;
 	int successor;
-	int listen_port;
+	int portnum;
 
 	char iface_name[64];
 	char ip_addr[128];
@@ -41,6 +42,7 @@ extern void print_RFC_Database();
 extern int create_server(int);
 extern int create_client (char *,int);
 extern peer_info_t peer_info;
-extern void server_listen();
+extern void populate_public_ip();
+extern void populate_port_num();
 extern void * lookup(); //will take void * as param
 #endif

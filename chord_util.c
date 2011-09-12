@@ -194,7 +194,7 @@ int create_client(char *address, int port)
 
 }
 
-void get_my_public_ip()
+void populate_public_ip()
 {
 
 	struct ifaddrs *myaddrs, *ifa;
@@ -248,7 +248,34 @@ void get_my_public_ip()
 
 }
 
-void server_listen()
+void populate_port_num()
 {
-	get_my_public_ip();	
+
+        struct sockaddr_in sock_server;
+        int portnum = well_known_port;
+
+        if ((well_known_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+                printf("error in socket creation");
+                exit(1);
+        }
+
+        memset((char *) &sock_server, 0, sizeof(sock_server));
+        sock_server.sin_family = AF_INET;
+        sock_server.sin_port = htons(portnum);
+        sock_server.sin_addr.s_addr = inet_addr(peer_info.ip_addr);
+
+        /* Each server instance created should listen on a different port. Generate a random number between 1024 to 65535.
+           Keep on generating new random numbers until bind succeeds.
+         */
+        while (bind(well_known_socket, (struct sockaddr *) &sock_server, sizeof(sock_server)) == -1) {
+                portnum = rand() % ( (65535-1024) + 1024);
+                sock_server.sin_port = htons(portnum);
+        }
+
+        if (listen(well_known_socket, 10) == -1) {
+                printf("listen error");
+                exit(1);
+        }
+	
+	peer_info.portnum = portnum;
 }
