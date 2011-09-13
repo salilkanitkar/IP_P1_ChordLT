@@ -237,7 +237,27 @@ void server_listen()
 			exit(-1);
 		}
 
-		printf("Got Following Msg from a client:\n%s", buf);
+		printf("\n\nGot Following Msg from a client:\n%s", buf);
+
+		char sendbuf[BUFLEN];
+		char filename[128] = RFC_PATH;
+		strcat(filename, "RFC_793_TCP.txt");
+	
+		int bytes_read;
+		FILE *fp = fopen(filename, "rb");
+
+		while (	( bytes_read = fread(sendbuf, sizeof(char), 500, fp) ) > 0) {
+
+			if ( send(client, sendbuf, bytes_read, 0) < 0 ) {
+				printf("Error in sending file data! \n");
+				exit(-1);
+			}
+
+		}
+
+		send(client, "FILEEND", 7, 0);
+		
+		fclose(fp);
 
 	}
 

@@ -10,6 +10,8 @@
 
 #define CHORD_PORT 5000
 
+#define RFC_PATH "./sample_RFCs/"
+
 extern int is_p0;
 extern int well_known_socket;
 extern int well_known_port;

@@ -60,6 +60,24 @@ int main()
                 exit(-1);
         }
 
+	FILE *fp = fopen(rfc_title, "wb");
+	char recvbuf[BUFLEN], *cp;
+	int bytes_read;
+
+	while (1) {
+
+		bytes_read = recv(sock, recvbuf, 500, 0);
+		if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) {
+			*cp = '\0';
+			fwrite(recvbuf, 1, bytes_read-7, fp);
+			break;
+		}
+		fwrite(recvbuf, 1, bytes_read, fp);
+
+	}
+
+	fclose(fp);
+
 	close(sock);
 
 	return(0);
