@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 	} else if (argc == 2 && (strcmp(argv[1], "--start") == 0) ) {
 		/* This is node P0 */
 		is_p0 = TRUE;
-		printf("Node P0 is starting up..... \n");
+		printf("\nNode P0 is starting up..... \n");
 	} else if (argc == 1) {
 		/* This is a Peer Node */
 		is_p0 = FALSE;
@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
 		print_RFC_Database();
 		#endif
 
+		peer_info.chord_id = 0;
 		populate_public_ip();
 		well_known_port = CHORD_PORT;
 		populate_port_num();

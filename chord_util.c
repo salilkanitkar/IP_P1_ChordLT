@@ -20,8 +20,6 @@
 
 #define BUFLEN 1500
 
-char buf[BUFLEN];
-
 void print_RFC_Database ()
 {
 	RFC_db_rec *p;
@@ -219,11 +217,49 @@ void populate_port_num()
 	peer_info.portnum = portnum;
 }
 
+void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
+{
+		
+	int bytes_read;
+	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle;
+	FILE *fp;
+
+	if (strcmp(msg_type, "FetchRFC") == 0) {
+
+		needle = strtok(msg, " ");
+		needle = strtok(NULL, " ");
+		needle = strtok(NULL, " ");
+
+		printf("\nThe needle is: %s\n", needle);
+		strcat(filename, needle);
+	
+		fp = fopen(filename, "rb");
+
+		while (	( bytes_read = fread(sendbuf, sizeof(char), 500, fp) ) > 0) {
+
+			if ( send(client_sock, sendbuf, bytes_read, 0) < 0 ) {
+				printf("Error in sending file data! \n");
+				exit(-1);
+			}
+
+		}
+
+		send(client_sock, "FILEEND", 7, 0);
+		
+		fclose(fp);
+
+		printf("Node %d is done sending an RFC to a Client.\n\n", peer_info.chord_id);
+		fflush(stdout);
+	}
+
+}
+
 void server_listen()
 {
 
         struct sockaddr_in sock_client;
 	int client, slen = sizeof(sock_client);
+	char msg_type[128], msg[BUFLEN], tmp[BUFLEN], *p;
 
 	while (1) {
 
@@ -232,33 +268,25 @@ void server_listen()
 			exit(-1);
 		}
 
-		if ( recv(client, buf, BUFLEN, 0) == -1 ) {
+		if ( recv(client, msg, BUFLEN, 0) == -1 ) {
 			printf("Recv error! \n");
 			exit(-1);
 		}
 
-		printf("\n\nGot Following Msg from a client:\n%s", buf);
+		printf("\nNode %d Received following Msg:\n%s", peer_info.chord_id, msg);
+		memcpy((char *)tmp, (char *)msg, strlen(msg));
 
-		char sendbuf[BUFLEN];
-		char filename[128] = RFC_PATH;
-		strcat(filename, "RFC_793_TCP.txt");
-	
-		int bytes_read;
-		FILE *fp = fopen(filename, "rb");
+		p = strtok(tmp, " ");
+		p = strtok(NULL, " ");
 
-		while (	( bytes_read = fread(sendbuf, sizeof(char), 500, fp) ) > 0) {
-
-			if ( send(client, sendbuf, bytes_read, 0) < 0 ) {
-				printf("Error in sending file data! \n");
-				exit(-1);
-			}
-
-		}
-
-		send(client, "FILEEND", 7, 0);
+		sprintf(msg_type, "%s", p);
 		
-		fclose(fp);
+		fflush(stdout);
 
+		/* The below func could possibly be in a pthread. */
+		handle_messages(msg_type, msg, client);
+
+		close(client);
 	}
 
 }
