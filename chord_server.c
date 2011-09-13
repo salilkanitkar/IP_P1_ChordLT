@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 		printf("Node P0 is listening of following IP address and Port Number: \n");
 		printf("IP Address: %s  Port Num: %d\n", peer_info.ip_addr, peer_info.portnum);
 
-		//server_listen();
+		server_listen();
 
 	} else {
 

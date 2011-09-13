@@ -18,6 +18,10 @@
 
 #include "chord_server.h"
 
+#define BUFLEN 1500
+
+char buf[BUFLEN];
+
 void print_RFC_Database ()
 {
 	RFC_db_rec *p;
@@ -55,6 +59,7 @@ printf("Enter generate_RFC_database \n");
 
 	for(i=0; i<50; i++){
 
+		/* TODO: Make sure that same random number is not generated again. */
 		rndm = generate_random_number(start, end);
 		#ifdef DEBUG_FLAG
 		printf("%d %d \n",rndm, rndm%1024);
@@ -85,72 +90,6 @@ printf("Enter generate_RFC_database \n");
 printf("Exit generate_RFC_database \n");
 #endif
 
-}
-
-int create_server(int server_port)
-{
-        int server_fd, new_fd, set = 1;
-        struct sockaddr_in server_addr, client_addr;
-        socklen_t addr_len = 0;
-        char p[50];
-
-	pthread_t thread_id;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	int thread_count = 0;
-
-        /* Standard server side socket sequence*/
-
-        if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)  {
-                fprintf(stdout, "socket() failure\n");
-                return -1;
-        }
-        if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &set,
-                                sizeof(int)) == -1) {
-                fprintf(stdout, "setsockopt() failed");
-                return -1;
-        }
-        bzero(&server_addr, sizeof(server_addr));
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(server_port) ;
-        server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        memset(server_addr.sin_zero, '\0', sizeof(server_addr.sin_zero));
-
-        if(bind(server_fd, (struct sockaddr*)&server_addr, sizeof
-                                server_addr) == -1)
-        {
-                fprintf(stdout, "bind() failed\n");
-                return -1;
-        
-        }
-
-        if(listen(server_fd, 10) == -1)
-        {
-                fprintf(stdout, "listen() failed\n");
-                return -1;
-        }
-        sprintf(p, "Portal listening on port:%d\n", server_port);
-//       fprintf(stdout, p);
-        while(1)
-        {
-
-                new_fd = accept(server_fd, (struct sockaddr*)&client_addr, &addr_len);
-                if(new_fd == -1)
-                {
-                        //log
-                        fprintf(stdout, "accept() failed\n");
-                        return -1;
-                
-                }
-                fprintf(stdout, "new connection accepted\n");
-                
-                //Create a Thread to handle this new request
-		pthread_create(&thread_id, &attr, lookup, NULL); //NULL will be replaced by param
-		thread_count++;
-		
-        }
-
-        return 0;
 }
 
 /* This is starting point of the lookup */
@@ -278,4 +217,28 @@ void populate_port_num()
         }
 	
 	peer_info.portnum = portnum;
+}
+
+void server_listen()
+{
+
+        struct sockaddr_in sock_client;
+	int client, slen = sizeof(sock_client);
+
+	while (1) {
+
+		if ((client = accept(well_known_socket, (struct sockaddr *) &sock_client, &slen)) == -1) {
+			printf("accept call failed! \n");
+			exit(-1);
+		}
+
+		if ( recv(client, buf, BUFLEN, 0) == -1 ) {
+			printf("Recv error! \n");
+			exit(-1);
+		}
+
+		printf("Got Following Msg from a client:\n%s", buf);
+
+	}
+
 }

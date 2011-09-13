@@ -44,5 +44,6 @@ extern int create_client (char *,int);
 extern peer_info_t peer_info;
 extern void populate_public_ip();
 extern void populate_port_num();
+extern void server_listen();
 extern void * lookup(); //will take void * as param
 #endif
