@@ -55,6 +55,8 @@ extern RFC_db_rec *rfc_db_head;
 extern void print_details();
 extern void populate_RFC_Directory(char [][RFC_TITLE_LEN_MAX]);
 extern void generate_RFC_Database(int,int,char [][RFC_TITLE_LEN_MAX]);
+//extern RFC_db_rec * sort_RFC_db(RFC_db_rec *);
+extern void sort_RFC_db();
 
 extern void print_RFC_Database();
 extern void initalize_peer_infos();

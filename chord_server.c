@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
 	int i,port;
 	char ip[128];
 	char RFC_Dir[RFC_NUM_MAX][RFC_TITLE_LEN_MAX], buf[BUFLEN];
+	
 
 	if (argc == 2 && (strcmp(argv[1], "--start") == 0) ) {
 
@@ -63,10 +64,36 @@ int main(int argc, char *argv[])
 		//This API Populates the RFC Titles Directory
 		populate_RFC_Directory(RFC_Dir);
 		generate_RFC_Database(1000,6000,RFC_Dir);
+
 		#ifdef DEBUG_FLAG
 		print_RFC_Database();
 		#endif
 
+		sort_RFC_db();
+		
+	        #ifdef DEBUG_FLAG
+		printf("-------------Sorted: \n");
+	        print_RFC_Database();
+                #endif
+		
+/*		RFC_db_rec *new;
+		new = find_keys_to_transfer(100,400);
+		
+	        #ifdef DEBUG_FLAG
+                printf("-------------Reduced DB: \n");
+                print_RFC_Database();
+                #endif
+
+		printf("------------To be Sent: \n");
+		RFC_db_rec *tp;
+		tp = new;
+		while(tp!=NULL){
+		     printf("Key : %d Value:%d  Title:%s\n",tp->key, tp->value,tp->RFC_title);
+                	tp=tp->next;
+        	        
+	        }
+*/
+		
 		peer_info.chord_id = 0;
 
 		initialize_peer_infos();
