@@ -55,6 +55,7 @@ extern RFC_db_rec *rfc_db_head;
 extern void print_details();
 extern void populate_RFC_Directory(char [][RFC_TITLE_LEN_MAX]);
 extern void generate_RFC_Database(int,int,char [][RFC_TITLE_LEN_MAX]);
+
 extern void print_RFC_Database();
 extern void initalize_peer_infos();
 extern int next_free_position();
@@ -69,6 +70,11 @@ extern void server_listen();
 extern int test_if_P0_alive(char [128], int);
 extern void send_message(char [128], int , char [128], char [1500]);
 extern peer_info_t find_successor(int);
+extern RFC_db_rec * find_keys_to_transfer(int, int);
 extern void * lookup(); //will take void * as parami
+extern void  build_GetKey_msg(char *);
+
+
+
 
 #endif

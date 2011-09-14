@@ -20,6 +20,10 @@
 
 #define BUFLEN 1500
 
+//char msg[BUFLEN];
+//char msg_type[128];
+//char PROTOCOL_STR[128] = "Chord-LT/1.0";
+
 void print_details(peer_info_t p_info)
 {
 	printf("Chord_Id:%d IP:%s Port:%d Successor:%d %s %d Pred:%d %s %d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor_id, p_info.successor_ip_addr, p_info.successor_portnum, p_info.pred_id, p_info.pred_ip_addr, p_info.pred_portnum);
@@ -326,7 +330,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
 	int bytes_read, portnum, chord_id, successor_id;
-	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, ip_addr[128]; 
+	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, ip_addr[128],buf[BUFLEN],msg_1[BUFLEN],msg_type_1[128]; 
 	char *p, *q, *r, *s, *t, *u, *v, *x, *xx, *y, *yy, *z, *zz;
 	FILE *fp;
 
@@ -434,6 +438,14 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		print_details(peer_info);
 		printf("\n\n");
 
+
+		//Build GetKey to be sent to Successor of current peer_info
+	 	build_GetKey_msg(msg_1);
+                strcpy(msg_type_1, "GetKey");
+                strcpy(buf, msg_1);
+                send_message(peer_info.successor_ip_addr, peer_info.successor_portnum, msg_type_1, buf);
+                printf("GetKey Message sent from Peer with ChordID %d to its successor with ChordID %d\n", peer_info.chord_id,peer_info.successor_id);
+
 		if ( peer_info.chord_id == 0 ) {
 			printf("\n\n The P2P System Details \n\n");
 			print_peer_infos();
@@ -441,7 +453,63 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		}
 
 	}
+	else if(strcmp(msg_type,"GetKey") == 0){
+                needle = strtok(msg, "\n");
+                needle = strtok(NULL, "\n");
+	
+
+                q = strtok(NULL, "\n");
+				
+                p = strtok(needle, ":");
+                p = strtok(NULL, ":");
+	        strcpy(ip_addr, p);
+
+                r = strtok(q, ":");
+                r = strtok(NULL, ":");
+                portnum = atoi(r);
+
+                fflush(stdout);
+		
+		//Now.. find the appropriate keys to be sent to node with ip_addr and portnum
+		RFC_db_rec *new_rfc;
+		new_rfc = find_keys_to_transfer(peer_info.chord_id,peer_info.pred_id);	
+			
+
+  		
+	}
+
 }
+
+
+RFC_db_rec * find_keys_to_transfer(int lower_bound, int upper_bound)
+{
+/*	int i;
+	RFC_db_rec *seek,*new,*new1;
+	seek = rfc_db_head;
+	new = NULL;
+	new1 = new;
+	while(seek!=NULL){
+		if((seek->key > lower_bound) && (seek->key <= upper_bound )){ //we have to send such 
+			if(new1 == NULL){	
+				new1 = new = seek;
+			}
+			else{
+				new1 -> next = seek;
+				new1 = new1->next;	
+			}
+		}
+	}
+*/	
+      
+}
+
+void  build_GetKey_msg(char *msg)
+{
+        sprintf(msg, "GET Key %s\nIP:%s\nPort:%d\n", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum);
+
+}
+
+
 
 void server_listen()
 {
@@ -696,3 +764,6 @@ peer_info_t find_successor(int chord_id)
 	return t;
 
 }
+
+
+

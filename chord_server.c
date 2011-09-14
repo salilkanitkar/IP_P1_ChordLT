@@ -108,6 +108,9 @@ int main(int argc, char *argv[])
 		strcpy(buf, msg);
 		send_message(ip, port, msg_type, buf);
 		printf("RegisterNode Message sent to P0\n");
+
+
+		
 	
 		server_listen();
 	
@@ -124,3 +127,11 @@ void build_RegisterNode_msg()
 {
         sprintf(msg, "GET RegisterNode %s\nIP:%s\nPort:%d\n", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum);
 }
+
+
+//void build_GetKey_msg()
+//{
+//        sprintf(msg, "GET Key %s\nIP:%s\nPort:%d\n", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum);
+//}
+
+
