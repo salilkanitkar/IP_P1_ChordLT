@@ -27,7 +27,7 @@ void print_RFC_Database ()
 	printf("\nThe RFC Database: \n");
 	while(p!=NULL)
 	{
-		printf("Key : %d Value:%d \n",p->key, p->value);
+		printf("Key : %d Value:%d  Title:%s\n",p->key, p->value,p->RFC_title);
 		p=p->next;
 	}
 	printf("\n");
@@ -39,7 +39,94 @@ int generate_random_number(int start, int end)
 }
 
 
-void generate_RFC_Database (int start, int end)
+void populate_RFC_Directory(char RFC_Dir[][2000])
+{
+	FILE *fp;
+	int i,len;
+	char path[2000];
+
+	fp = popen("/bin/ls ./sample_RFCs/", "r");
+	if (fp == NULL) {
+	    printf("Failed to run command\n" );
+	    exit;
+  	}
+  	
+	
+  	for(i=0;i<50 && fgets(path,sizeof(path),fp)!=NULL;i++){
+		len = strlen(path);
+		if( path[len-1] == '\n' )
+		    path[len-1] = 0;
+		strcpy(RFC_Dir[i],path);
+		//printf("%s",RFC_Dir[i]);
+  	}
+  
+
+  /* close */
+  pclose(fp);
+	
+}
+
+int check_chordID(int random)
+{
+	int i;
+	for(i=0;i<10;i++)
+	{
+		if(peer_infos[i].chord_id==random)
+		{
+			return -1;
+		}
+	}
+	return 1;
+}
+
+
+
+int next_free_position()
+{
+	int i;
+	for(i=0;i<10;i++)
+	{
+		if(peer_infos[i].chord_id == -1)
+			return i;
+	}
+	return -1;
+}
+
+
+void initialize_peer_infos()
+{
+	int i;
+	for(i=0;i<10;i++)
+	{
+		peer_infos[i].chord_id = -1;
+		peer_infos[i].successor = -1;
+		peer_infos[i].portnum = -1;
+		strcpy(peer_infos[i].iface_name,"\0");
+		strcpy(peer_infos[i].ip_addr,"\0");
+	}
+}
+
+
+int generate_ChordID(int start, int end)
+{
+        long int seed;
+        int rndm,next_free;
+        struct timeval ct;
+        //int i;
+        //RFC_db_rec *p, *q;
+
+        gettimeofday(&ct, NULL);
+        seed = (ct.tv_sec +ct.tv_usec);
+        srand(seed);
+	while(check_chordID(rndm=generate_random_number(1,1023))==-1);
+	
+	next_free = next_free_position();
+	peer_infos[next_free].chord_id = rndm;
+	return rndm;
+	
+}
+
+void generate_RFC_Database (int start, int end, char RFC_Dir[][2000])
 {
 #ifdef DEBUG_FLAG
 printf("Enter generate_RFC_database \n");
@@ -71,7 +158,8 @@ printf("Enter generate_RFC_database \n");
 		p->next = NULL;
 		p->key = (int)rndm % 1024;
         	p->value = (int)rndm;
-		sprintf(p->RFC_title, "ID:%d Value:%d", p->key, p->value);
+//		sprintf(p->RFC_title, "ID:%d Value:%d", p->key, p->value);
+		strcpy(p->RFC_title, RFC_Dir[i]);
         	sprintf(p->RFC_body, "ID:%d Value:%d \n<<RFC Text Goes Here>>", p->key, p->value);
 
 		if ( rfc_db_head == NULL) {
