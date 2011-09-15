@@ -22,7 +22,7 @@
 
 void print_details(peer_info_t p_info)
 {
-	printf("Chord_Id:%d IP:%s Port:%d Successor:%d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor_id);
+	printf("Chord_Id:%d IP:%s Port:%d Successor:%d %s %d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor_id, p_info.successor_ip_addr, p_info.successor_portnum);
 }
 
 void print_RFC_Database ()
@@ -72,7 +72,7 @@ void populate_RFC_Directory(char RFC_Dir[][RFC_TITLE_LEN_MAX])
 int check_chordID(int random)
 {
 	int i;
-	for(i=0;i<10;i++)
+	for(i=0;i<MAX_NUM_OF_PEERS;i++)
 	{
 		if(peer_infos[i].chord_id==random)
 		{
@@ -87,7 +87,7 @@ int check_chordID(int random)
 int next_free_position()
 {
 	int i;
-	for(i=0;i<10;i++)
+	for(i=0;i<MAX_NUM_OF_PEERS;i++)
 	{
 		if(peer_infos[i].chord_id == -1)
 			return i;
@@ -99,7 +99,7 @@ int next_free_position()
 void initialize_peer_infos()
 {
 	int i;
-	for(i=0;i<10;i++)
+	for(i=0;i<MAX_NUM_OF_PEERS;i++)
 	{
 		peer_infos[i].chord_id = -1;
 		peer_infos[i].successor_id = -1;
@@ -111,7 +111,31 @@ void initialize_peer_infos()
 
 void put_in_peer_infos(int chord_id, char ip_addr[128], int portnum)
 {
-	int next_free = next_free_position();
+	int i, j, next_free;
+
+	for ( i=0 ; i<MAX_NUM_OF_PEERS ; i++ ) {
+		if ( peer_infos[i].chord_id > chord_id ) {
+			next_free = i;
+			j = i;
+			while ( peer_infos[j].chord_id != -1 )
+				j += 1;
+			while ( j > i) {
+				peer_infos[j].chord_id = peer_infos[j-1].chord_id;
+				strcpy(peer_infos[j].ip_addr, peer_infos[j-1].ip_addr);
+				peer_infos[j].portnum = peer_infos[j-1].portnum;
+				strcpy(peer_infos[j].iface_name, peer_infos[j-1].iface_name);
+				peer_infos[j].successor_id = peer_infos[j-1].successor_id;
+				strcpy(peer_infos[j].successor_ip_addr, peer_infos[j-1].successor_ip_addr);
+				peer_infos[j].successor_portnum = peer_infos[j-1].successor_portnum;
+				j -= 1;
+			}
+			break;	
+		} else if ( peer_infos[i].chord_id == -1 ) {
+			next_free = i;
+			break;
+		}
+	}
+
 	peer_infos[next_free].chord_id = chord_id;
 	strcpy(peer_infos[next_free].ip_addr, ip_addr);
 	peer_infos[next_free].portnum = portnum;
@@ -120,7 +144,7 @@ void put_in_peer_infos(int chord_id, char ip_addr[128], int portnum)
 void print_peer_infos()
 {
 	int i;
-	for(i=0;i<10;i++)
+	for(i=0;i<MAX_NUM_OF_PEERS;i++)
 	{
 		if (peer_infos[i].chord_id != -1)
 			print_details(peer_infos[i]);
@@ -294,7 +318,8 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
 	int bytes_read, portnum, chord_id, successor_id;
-	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, *p, *q, *r, ip_addr[128];
+	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, ip_addr[128]; 
+	char *p, *q, *r, *s, *t, *u, *v;
 	FILE *fp;
 
 	if (strcmp(msg_type, "FetchRFC") == 0) {
@@ -322,6 +347,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		fclose(fp);
 
 		printf("Node %d is done sending an RFC to a Client.\n\n", peer_info.chord_id);
+		printf("\n\n");
 		fflush(stdout);
 
 	} else if (strcmp(msg_type, "RegisterNode") == 0) {
@@ -337,22 +363,23 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 
 		r = strtok(q, ":");
 		r = strtok(NULL, ":");
-		printf("%s\n", r);
 		portnum = atoi(r);
 	
-		printf("IP:%s Port:%d\n", ip_addr, portnum);
 		fflush(stdout);
-
+	
 		chord_id = generate_ChordID(1, 1023);
 		put_in_peer_infos(chord_id, ip_addr, portnum);
 
-		printf("\n\n The P2P System Details \n\n");
+		peer_info_t t ;
+		t = find_successor(chord_id);
+
+		printf("\n\nThe P2P System Details \n\n");
 		print_peer_infos();
 		printf("\n\n");
+		print_details(peer_info);
+		printf("\n\n");
 
-		successor_id = find_successor();
-
-		sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\n", PROTOCOL_STR, chord_id, successor_id);
+		sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\n", PROTOCOL_STR, chord_id, t.successor_id, t.successor_ip_addr, t.successor_portnum);
 		strcpy(msg_type, "NodeIdentity");
 		send_message(ip_addr, portnum, msg_type, sendbuf);
 
@@ -361,6 +388,8 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		needle = strtok(msg, "\n");
 		needle = strtok(NULL, "\n");
 		q = strtok(NULL, "\n");
+		s = strtok(NULL, "\n");
+		t = strtok(NULL, "\n");
 
 		p = strtok(needle, ":");
 		p = strtok(NULL, ":");
@@ -370,9 +399,23 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		r = strtok(NULL, ":");
 		peer_info.successor_id = atoi(r);
 
-		printf("Received the NodeIdentity Message from P0\n");
+		u = strtok(s, ":");
+		u = strtok(NULL, ":");
+		strcpy(peer_info.successor_ip_addr, u);
+
+		v = strtok(t, ":");
+		v = strtok(NULL, ":");
+		peer_info.successor_portnum = atoi(v);
+
+		printf("\n\nReceived the NodeIdentity Message from P0\n");
 		print_details(peer_info);
 		printf("\n\n");
+
+		if ( peer_info.chord_id == 0 ) {
+			printf("\n\n The P2P System Details \n\n");
+			print_peer_infos();
+			printf("\n\n");
+		}
 
 	}
 }
@@ -472,7 +515,88 @@ void send_message(char ip_addr[128], int portnum, char msg_type[128], char msg[B
 
 }
 
-int find_successor()
+peer_info_t find_successor(int chord_id)
 {
-	return 0;
+
+	peer_info_t t;
+	int i;
+
+	for (i=0 ; i<MAX_NUM_OF_PEERS ; i++) {
+		if ( peer_infos[i].chord_id == chord_id ) {
+			if ( peer_infos[(i+1) % MAX_NUM_OF_PEERS].chord_id != -1 ) {
+				t.successor_id = peer_infos[(i+1)%MAX_NUM_OF_PEERS].chord_id;
+				strcpy(t.successor_ip_addr, peer_infos[(i+1)%MAX_NUM_OF_PEERS].ip_addr);
+				t.successor_portnum = peer_infos[(i+1)%MAX_NUM_OF_PEERS].portnum;
+
+				peer_infos[i].successor_id = peer_infos[(i+1)%MAX_NUM_OF_PEERS].chord_id;
+				strcpy(peer_infos[i].successor_ip_addr, peer_infos[(i+1)%MAX_NUM_OF_PEERS].ip_addr);
+				peer_infos[i].successor_portnum = peer_infos[(i+1)%MAX_NUM_OF_PEERS].portnum;
+
+				break;
+			} else {
+				t.successor_id = peer_infos[0].chord_id;
+				strcpy(t.successor_ip_addr, peer_infos[0].ip_addr);
+				t.successor_portnum = peer_infos[0].portnum;
+
+				peer_infos[i].successor_id = peer_infos[0].chord_id;
+				strcpy(peer_infos[i].successor_ip_addr, peer_infos[0].ip_addr);
+				peer_infos[i].successor_portnum = peer_infos[0].portnum;
+
+				break;
+			}
+		}
+	}
+
+	char sendbuf[BUFLEN], msg_type[128];
+
+	for ( i=0 ; i< MAX_NUM_OF_PEERS ; i++ ) {
+
+		if ( peer_infos[i].chord_id != -1 ) {
+
+			if ( peer_infos[(i+1)%MAX_NUM_OF_PEERS].chord_id != -1 ) {
+
+				if ( peer_infos[i].successor_id != peer_infos[(i+1)%MAX_NUM_OF_PEERS].chord_id ) {
+	
+					peer_infos[i].successor_id = peer_infos[(i+1)%MAX_NUM_OF_PEERS].chord_id;
+					strcpy(peer_infos[i].successor_ip_addr, peer_infos[(i+1)%MAX_NUM_OF_PEERS].ip_addr);
+					peer_infos[i].successor_portnum = peer_infos[(i+1)%MAX_NUM_OF_PEERS].portnum;
+
+					if ( peer_infos[i].chord_id == peer_info.chord_id ) {
+						peer_info.successor_id = peer_infos[i].successor_id;
+						strcpy(peer_info.successor_ip_addr, peer_infos[i].successor_ip_addr);
+						peer_info.successor_portnum = peer_infos[i].successor_portnum;
+					} else {
+						printf("1) Send NodeIdentiy msg to Node %d\n", peer_infos[i].chord_id);
+				                sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\n", PROTOCOL_STR, peer_infos[i].chord_id, peer_infos[i].successor_id, peer_infos[i].successor_ip_addr, peer_infos[i].successor_portnum);
+				                strcpy(msg_type, "NodeIdentity");
+				                send_message(peer_infos[i].ip_addr, peer_infos[i].portnum, msg_type, sendbuf);
+					}
+				}
+
+			} else {
+
+				if ( peer_infos[i].successor_id != peer_infos[0].chord_id ) {
+
+					peer_infos[i].successor_id = peer_infos[0].chord_id;
+					strcpy(peer_infos[i].successor_ip_addr, peer_infos[0].ip_addr);
+					peer_infos[i].successor_portnum = peer_infos[0].portnum;
+
+					/* Send NodeIdentity msg to peer_infos[i] */
+
+					if ( peer_infos[i].chord_id == peer_info.chord_id ) {
+						peer_info.successor_id = peer_infos[i].successor_id;
+						strcpy(peer_info.successor_ip_addr, peer_infos[i].successor_ip_addr);
+						peer_info.successor_portnum = peer_infos[i].successor_portnum;
+					} else {
+						printf("2) Send NodeIdentiy msg to Node %d\n", peer_infos[i].chord_id);
+					}
+
+				}
+
+			}
+		}
+	}
+
+	return t;
+
 }

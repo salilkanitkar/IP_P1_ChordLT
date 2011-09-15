@@ -14,6 +14,8 @@
 
 #define RFC_NUM_MAX 50
 
+#define MAX_NUM_OF_PEERS 10
+
 typedef struct RFC_db_rec_ {
 
 	int key;
@@ -62,6 +64,7 @@ extern void populate_port_num();
 extern void server_listen();
 extern int test_if_P0_alive(char [128], int);
 extern void send_message(char [128], int , char [128], char [1500]);
+extern peer_info_t find_successor(int);
 extern void * lookup(); //will take void * as parami
 
 #endif
