@@ -28,7 +28,7 @@ int main()
         struct sockaddr_in sock_client;
         int sock, slen = sizeof(sock_client), ret;
 
-	char ip_addr[128], rfc_title[128], msg_type[128];
+	char ip_addr[128], rfc_value[128], msg_type[128];
 	int portnum;
 
 	printf("Enter the IP Address of the Peer to connect to: ");
@@ -55,10 +55,10 @@ int main()
 
 	if ( strcmp(msg_type,"FetchRFC") == 0 ) {
 
-		printf("Enter the RFC Tile of the RFC to be fetched: ");
-		scanf("%s", rfc_title);
+		printf("Enter the RFC Value of the RFC to be fetched: ");
+		scanf("%s", rfc_value);
 	
-		build_FetchRFC_msg(ip_addr, portnum, rfc_title);
+		build_FetchRFC_msg(ip_addr, portnum, rfc_value);
 		printf("FetchRFC Msg:\n%s", buf);
 
         	if ( send(sock, buf, BUFLEN, 0) == -1 ) {
@@ -66,7 +66,7 @@ int main()
 	                exit(-1);
         	}
 
-		FILE *fp = fopen(rfc_title, "wb");
+		FILE *fp;// = fopen(rfc_title, "wb");// ??
 		char recvbuf[BUFLEN], *cp;
 		int bytes_read;
 

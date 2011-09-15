@@ -407,7 +407,7 @@ int get_rfc(char title[128], char ip_addr[128], int portnum)
 void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
-	int bytes_read, portnum, chord_id, successor_id;
+	int bytes_read, portnum, chord_id, successor_id,rfc_value;
 	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, ip_addr[128]; 
 	char *p, *q, *r, *s, *t, *u, *v, *x, *xx, *y, *yy, *z, *zz;
 	FILE *fp;
@@ -419,8 +419,10 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		needle = strtok(NULL, " ");
 
 		printf("\nThe needle is: %s\n", needle);
-		strcat(filename, needle);
-	
+		strcat(filename, needle); //filename can be RFC  Value or FileName (not changing the variable :P)
+
+		
+			
 		fp = fopen(filename, "rb");
 
 		while (	( bytes_read = fread(sendbuf, sizeof(char), 500, fp) ) > 0) {
@@ -476,6 +478,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		send_message(ip_addr, portnum, msg_type, sendbuf);
 
 	} else if (strcmp(msg_type, "NodeIdentity") == 0) {
+
 
 		needle = strtok(msg, "\n");
 		needle = strtok(NULL, "\n");
@@ -709,6 +712,86 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 	        printf("The RFC db at this node \n");
 	        print_RFC_Database();
 
+	}
+	else if(strcmp(msg_type, "GetRFC") == 0 ){ // Request for the final Server who HAS the RFC
+		//this message will build the response with ACTUAL body of RFC.
+                needle = strtok(msg, "\n");
+                needle = strtok(NULL, "\n");
+                q = strtok(NULL, "\n");
+
+                p = strtok(needle, ":");
+                p = strtok(NULL, ":");
+                strcpy(ip_addr, p);
+
+                r = strtok(q, ":");
+                r = strtok(NULL, ":");
+                portnum = atoi(r);
+
+		s = strtok(q,":");
+		s = strtok(NULL,":");
+                fflush(stdout);
+		rfc_value = atoi(s);
+
+		//Look up the RFC-value in the rfc_db_head of the current server to get the file name corresponding to the RFC-value
+		
+		RFC_db_rec *hh;
+		hh = rfc_db_head;
+		filename[0] = '\0';
+		while(hh!=NULL){
+			if(hh -> value == rfc_value)
+			{
+				strcpy(filename, hh->RFC_title);
+				break;
+			}
+		}
+		if(filename[0] == '\0')
+		{
+			printf("Fatal Error!!! Exiting!\n");
+			exit(1);
+		}
+		
+		//open file with filename and send to ip_addr and portnum
+                fp = fopen(filename, "rb");
+
+                while ( ( bytes_read = fread(sendbuf, sizeof(char), 500, fp) ) > 0) {
+
+                        if ( send(client_sock, sendbuf, bytes_read, 0) < 0 ) {
+                                printf("Error in sending file data! \n");
+                                exit(-1);
+                        }
+
+                }
+                printf("Sending end line of RFC\n");
+                send(client_sock, "FILEEND", 7, 0);
+
+                fclose(fp);
+                close(client_sock);
+
+                printf("Node %d is done sending an RFC to requesting server.\n\n", peer_info.chord_id);
+                printf("\n\n");
+                fflush(stdout);
+		//This guy's Job is done!
+		//Now, the requesting server (in sync_send() mode) will accept this file and return it to the requesting client	
+		
+			
+	
+	
+	}
+	else if(strcmp(msg_type, "ForwardResponse") == 0){ //Response to the original server after the lookup forwarding
+//		rfc_db_head = sort_RFC_db(rfc_db_head);
+		//Parse out the IP Addr, Port Num, Chord ID which this server received as response to the Forward (This is the originating server!)
+		/*TODO*///Put the logic to parse ip_addr , portnum and chord_id from the Forward message packet later here				
+
+
+                /* Build GetRFC message which will originate from the initial server to the server which guarantees that RFC is there */
+		//Populate variable 'rfc-value' somewhere
+		
+                sprintf(msg, "GET GetRFC %s\nIP:%s\nPort:%d\nRFC-Value:%d\n", PROTOCOL_STR, ip_addr, portnum, rfc_value);
+                strcpy(msg_type, "GetRFC");
+                strcpy(sendbuf, msg);
+                send_message(ip_addr, portnum, msg_type, sendbuf);
+                printf("%s Message sent from Peer with ChordID %d to the FINAL Peer  with ChordID %d\n", msg_type, peer_info.chord_id, chord_id);
+	
 	}
 
 }
