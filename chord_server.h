@@ -12,10 +12,7 @@
 
 #define RFC_PATH "./sample_RFCs/"
 
-extern int is_p0;
-extern int well_known_socket;
-extern int well_known_port;
-//extern char RFC_Dir[50][2000];
+#define RFC_NUM_MAX 50
 
 typedef struct RFC_db_rec_ {
 
@@ -31,28 +28,40 @@ typedef struct RFC_db_rec_ {
 typedef struct peer_info_t_ {
 
 	int chord_id;
-	int successor;
 	int portnum;
-
 	char iface_name[64];
 	char ip_addr[128];
 
+	int successor_id;
+	char successor_ip_addr[128];
+	int successor_portnum;
+	
 }peer_info_t;
 
-extern RFC_db_rec *rfc_db_head;
-extern void generate_RFC_Database(int,int,char [][2000]);
-extern void print_RFC_Database();
-extern int create_server(int);
-extern int create_client (char *,int);
+extern char PROTOCOL_STR[128];
+extern int is_p0;
+extern int well_known_socket;
+extern int well_known_port;
 extern peer_info_t peer_info;
 extern peer_info_t peer_infos[10];
-extern void populate_public_ip();
-extern void populate_port_num();
-extern void populate_RFC_Directory(char [][2000]);
-extern void server_listen();
-extern void * lookup(); //will take void * as parami
+extern RFC_db_rec *rfc_db_head;
+
+extern void print_details();
+extern void populate_RFC_Directory(char [][RFC_TITLE_LEN_MAX]);
+extern void generate_RFC_Database(int,int,char [][RFC_TITLE_LEN_MAX]);
+extern void print_RFC_Database();
 extern void initalize_peer_infos();
 extern int next_free_position();
 extern int check_chordID(int);
 extern int generate_chordID(int,int);
+extern void put_in_peer_infos(int , char [128], int );
+
+extern void populate_public_ip();
+extern void populate_port_num();
+
+extern void server_listen();
+extern int test_if_P0_alive(char [128], int);
+extern void send_message(char [128], int , char [128], char [1500]);
+extern void * lookup(); //will take void * as parami
+
 #endif

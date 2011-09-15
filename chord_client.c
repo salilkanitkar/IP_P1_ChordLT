@@ -16,7 +16,7 @@ char FETCHMSG_STR[128] = "FetchRFC";
 #define BUFLEN 1500
 char buf[BUFLEN];
 
-void build_FETCHRFC_msg(char *ip_addr, int portnum, char *rfc_title) 
+void build_FetchRFC_msg(char *ip_addr, int portnum, char *rfc_title) 
 {
 	sprintf(buf, "GET %s %s %s\nIP:%s\nPort:%d\n", FETCHMSG_STR, rfc_title, PROTOCOL_STR, ip_addr, portnum);
 }
@@ -52,7 +52,7 @@ int main()
 		exit(-1);
 	}
 
-	build_FETCHRFC_msg(ip_addr, portnum, rfc_title);
+	build_FetchRFC_msg(ip_addr, portnum, rfc_title);
 	printf("FetchRFC Msg:\n%s", buf);
 
         if ( send(sock, buf, BUFLEN, 0) == -1 ) {

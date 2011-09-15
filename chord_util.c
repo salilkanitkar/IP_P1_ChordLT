@@ -20,6 +20,11 @@
 
 #define BUFLEN 1500
 
+void print_details(peer_info_t p_info)
+{
+	printf("Chord_Id:%d IP:%s Port:%d Successor:%d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor_id);
+}
+
 void print_RFC_Database ()
 {
 	RFC_db_rec *p;
@@ -39,30 +44,28 @@ int generate_random_number(int start, int end)
 }
 
 
-void populate_RFC_Directory(char RFC_Dir[][2000])
+void populate_RFC_Directory(char RFC_Dir[][RFC_TITLE_LEN_MAX])
 {
 	FILE *fp;
 	int i,len;
-	char path[2000];
+	char path[RFC_TITLE_LEN_MAX];
 
 	fp = popen("/bin/ls ./sample_RFCs/", "r");
 	if (fp == NULL) {
 	    printf("Failed to run command\n" );
-	    exit;
+	    exit(-1);
   	}
   	
 	
-  	for(i=0;i<50 && fgets(path,sizeof(path),fp)!=NULL;i++){
+  	for(i=0;i<RFC_NUM_MAX && fgets(path,sizeof(path),fp)!=NULL;i++){
 		len = strlen(path);
 		if( path[len-1] == '\n' )
 		    path[len-1] = 0;
 		strcpy(RFC_Dir[i],path);
-		//printf("%s",RFC_Dir[i]);
   	}
-  
 
-  /* close */
-  pclose(fp);
+  	/* close */
+	pclose(fp);
 	
 }
 
@@ -99,34 +102,48 @@ void initialize_peer_infos()
 	for(i=0;i<10;i++)
 	{
 		peer_infos[i].chord_id = -1;
-		peer_infos[i].successor = -1;
+		peer_infos[i].successor_id = -1;
 		peer_infos[i].portnum = -1;
 		strcpy(peer_infos[i].iface_name,"\0");
 		strcpy(peer_infos[i].ip_addr,"\0");
 	}
 }
 
+void put_in_peer_infos(int chord_id, char ip_addr[128], int portnum)
+{
+	int next_free = next_free_position();
+	peer_infos[next_free].chord_id = chord_id;
+	strcpy(peer_infos[next_free].ip_addr, ip_addr);
+	peer_infos[next_free].portnum = portnum;
+}
+
+void print_peer_infos()
+{
+	int i;
+	for(i=0;i<10;i++)
+	{
+		if (peer_infos[i].chord_id != -1)
+			print_details(peer_infos[i]);
+	}
+
+}
 
 int generate_ChordID(int start, int end)
 {
         long int seed;
         int rndm,next_free;
         struct timeval ct;
-        //int i;
-        //RFC_db_rec *p, *q;
 
         gettimeofday(&ct, NULL);
         seed = (ct.tv_sec +ct.tv_usec);
         srand(seed);
-	while(check_chordID(rndm=generate_random_number(1,1023))==-1);
+
+	while( check_chordID(rndm = generate_random_number(1,1023) ) == -1 );
 	
-	next_free = next_free_position();
-	peer_infos[next_free].chord_id = rndm;
 	return rndm;
-	
 }
 
-void generate_RFC_Database (int start, int end, char RFC_Dir[][2000])
+void generate_RFC_Database (int start, int end, char RFC_Dir[][RFC_TITLE_LEN_MAX])
 {
 #ifdef DEBUG_FLAG
 printf("Enter generate_RFC_database \n");
@@ -158,7 +175,6 @@ printf("Enter generate_RFC_database \n");
 		p->next = NULL;
 		p->key = (int)rndm % 1024;
         	p->value = (int)rndm;
-//		sprintf(p->RFC_title, "ID:%d Value:%d", p->key, p->value);
 		strcpy(p->RFC_title, RFC_Dir[i]);
         	sprintf(p->RFC_body, "ID:%d Value:%d \n<<RFC Text Goes Here>>", p->key, p->value);
 
@@ -186,37 +202,6 @@ void * lookup()
 	//further processing on chord_id
 	
 	pthread_exit(NULL);
-}
-
-int create_client(char *address, int port)
-{
-    int sockfd, portno;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-
-//    if (argc < 3) {
-  //     fprintf(stderr,"usage %s hostname port\n", argv[0]);
-  //     exit(0);
-  //  }
-    portno = port;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        fprintf(stderr,"ERROR opening socket");
-    server = gethostbyname(address);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-        fprintf(stderr,"ERROR connecting");
-    return sockfd;
-
 }
 
 void populate_public_ip()
@@ -308,8 +293,8 @@ void populate_port_num()
 void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
-	int bytes_read;
-	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle;
+	int bytes_read, portnum, chord_id, successor_id;
+	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, *p, *q, *r, ip_addr[128];
 	FILE *fp;
 
 	if (strcmp(msg_type, "FetchRFC") == 0) {
@@ -338,15 +323,65 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 
 		printf("Node %d is done sending an RFC to a Client.\n\n", peer_info.chord_id);
 		fflush(stdout);
-	}
 
+	} else if (strcmp(msg_type, "RegisterNode") == 0) {
+
+		/* Only P0 can receive RegisterNode */
+		needle = strtok(msg, "\n");
+		needle = strtok(NULL, "\n");
+		q = strtok(NULL, "\n");
+
+		p = strtok(needle, ":");
+		p = strtok(NULL, ":");
+		strcpy(ip_addr, p);
+
+		r = strtok(q, ":");
+		r = strtok(NULL, ":");
+		printf("%s\n", r);
+		portnum = atoi(r);
+	
+		printf("IP:%s Port:%d\n", ip_addr, portnum);
+		fflush(stdout);
+
+		chord_id = generate_ChordID(1, 1023);
+		put_in_peer_infos(chord_id, ip_addr, portnum);
+
+		printf("\n\n The P2P System Details \n\n");
+		print_peer_infos();
+		printf("\n\n");
+
+		successor_id = find_successor();
+
+		sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\n", PROTOCOL_STR, chord_id, successor_id);
+		strcpy(msg_type, "NodeIdentity");
+		send_message(ip_addr, portnum, msg_type, sendbuf);
+
+	} else if (strcmp(msg_type, "NodeIdentity") == 0) {
+
+		needle = strtok(msg, "\n");
+		needle = strtok(NULL, "\n");
+		q = strtok(NULL, "\n");
+
+		p = strtok(needle, ":");
+		p = strtok(NULL, ":");
+		peer_info.chord_id = atoi(p);
+
+		r = strtok(q, ":");
+		r = strtok(NULL, ":");
+		peer_info.successor_id = atoi(r);
+
+		printf("Received the NodeIdentity Message from P0\n");
+		print_details(peer_info);
+		printf("\n\n");
+
+	}
 }
 
 void server_listen()
 {
 
         struct sockaddr_in sock_client;
-	int client, slen = sizeof(sock_client);
+	int client, slen = sizeof(sock_client), ret;
 	char msg_type[128], msg[BUFLEN], tmp[BUFLEN], *p;
 
 	while (1) {
@@ -356,12 +391,16 @@ void server_listen()
 			exit(-1);
 		}
 
-		if ( recv(client, msg, BUFLEN, 0) == -1 ) {
+		ret = recv(client, msg, BUFLEN, 0);
+
+		if ( ret == -1 ) {
 			printf("Recv error! \n");
 			exit(-1);
+		} else if ( ret == 0) {
+			goto close;
 		}
 
-		printf("\nNode %d Received following Msg:\n%s", peer_info.chord_id, msg);
+		printf("\nReceived following Msg:\n%s", msg);
 		memcpy((char *)tmp, (char *)msg, strlen(msg));
 
 		p = strtok(tmp, " ");
@@ -374,7 +413,66 @@ void server_listen()
 		/* The below func could possibly be in a pthread. */
 		handle_messages(msg_type, msg, client);
 
+close:
 		close(client);
 	}
 
+}
+
+int test_if_P0_alive(char ip_addr[128], int portnum)
+{
+
+	struct sockaddr_in sock_client;
+	int sock, slen = sizeof(sock_client), ret;
+
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        memset((char *) &sock_client, 0, sizeof(sock_client));
+
+        sock_client.sin_family = AF_INET;
+        sock_client.sin_port = htons(portnum);
+        sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+        ret = connect(sock, (struct sockaddr *) &sock_client, slen);
+	if (ret == -1) {
+		close(sock);
+                return(-1);
+	}
+	else {
+		close(sock);
+		return(1);
+	}
+
+}
+
+void send_message(char ip_addr[128], int portnum, char msg_type[128], char msg[BUFLEN])
+{
+
+        struct sockaddr_in sock_client;
+        int sock, slen = sizeof(sock_client), ret;
+
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        memset((char *) &sock_client, 0, sizeof(sock_client));
+
+        sock_client.sin_family = AF_INET;
+        sock_client.sin_port = htons(portnum);
+        sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+        ret = connect(sock, (struct sockaddr *) &sock_client, slen);
+        if (ret == -1) {
+                printf("Connect failed! Check the IP and port number of the Sever! \n");
+                exit(-1);
+        }
+
+        if ( send(sock, msg, BUFLEN, 0) == -1 ) {
+                printf("send failed ");
+                exit(-1);
+        }
+
+	close(sock);
+
+}
+
+int find_successor()
+{
+	return 0;
 }
