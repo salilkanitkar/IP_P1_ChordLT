@@ -78,12 +78,19 @@ int main(int argc, char *argv[])
 		peer_info.successor_id = 0;
 		strcpy(peer_info.successor_ip_addr, peer_info.ip_addr);
 		peer_info.successor_portnum = peer_info.portnum;
+		peer_info.pred_id = 0;
+		strcpy(peer_info.pred_ip_addr, peer_info.ip_addr);
+		peer_info.pred_portnum = peer_info.portnum;
 
 		put_in_peer_infos(peer_info.chord_id, peer_info.ip_addr, peer_info.portnum);
 
 		peer_infos[0].successor_id = 0;
 		strcpy(peer_infos[0].successor_ip_addr, peer_info.ip_addr);
 		peer_infos[0].successor_portnum = peer_info.portnum;
+		peer_infos[0].pred_id = 0;
+		strcpy(peer_infos[0].pred_ip_addr, peer_info.ip_addr);
+		peer_infos[0].pred_portnum = peer_info.portnum;
+
 
 		print_peer_infos();
 

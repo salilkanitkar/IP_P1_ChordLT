@@ -37,6 +37,10 @@ typedef struct peer_info_t_ {
 	int successor_id;
 	char successor_ip_addr[128];
 	int successor_portnum;
+
+	int pred_id;
+	char pred_ip_addr[128];
+	int pred_portnum;
 	
 }peer_info_t;
 
