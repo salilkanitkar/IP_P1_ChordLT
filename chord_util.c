@@ -838,7 +838,7 @@ peer_info_t setup_successor(int chord_id)
 				strcpy(peer_infos[i].successor_ip_addr, peer_infos[(i+1)%MAX_NUM_OF_PEERS].ip_addr);
 				peer_infos[i].successor_portnum = peer_infos[(i+1)%MAX_NUM_OF_PEERS].portnum;
 
-				if (i!=0) {
+				//if (i!=0) {
 					t.pred_id = peer_infos[(i-1)%MAX_NUM_OF_PEERS].chord_id;
 					strcpy(t.pred_ip_addr, peer_infos[(i-1)%MAX_NUM_OF_PEERS].ip_addr);
 					t.pred_portnum = peer_infos[(i-1)%MAX_NUM_OF_PEERS].portnum;
@@ -846,7 +846,8 @@ peer_info_t setup_successor(int chord_id)
 					peer_infos[i].pred_id = peer_infos[(i-1)%MAX_NUM_OF_PEERS].chord_id;
 					strcpy(peer_infos[i].pred_ip_addr, peer_infos[(i-1)%MAX_NUM_OF_PEERS].ip_addr);
 					peer_infos[i].pred_portnum = peer_infos[(i-1)%MAX_NUM_OF_PEERS].portnum;
-				} else {
+				//} 
+				/*else {
 					t.pred_id = peer_infos[n].chord_id;
 					strcpy(t.pred_ip_addr, peer_infos[n].ip_addr);
 					t.pred_portnum = peer_infos[n].portnum;
@@ -854,7 +855,7 @@ peer_info_t setup_successor(int chord_id)
 					peer_infos[i].pred_id = peer_infos[n].chord_id;
 					strcpy(peer_infos[i].pred_ip_addr, peer_infos[n].ip_addr);
 					peer_infos[i].pred_portnum = peer_infos[n].portnum;
-				}
+				}*/
 				
 				break;
 
@@ -929,7 +930,7 @@ peer_info_t setup_successor(int chord_id)
 
 	for ( i=0 ; i< MAX_NUM_OF_PEERS ; i++ ) {
 		if ( peer_infos[i].chord_id != -1 ) {
-			if ( i == 0 && peer_infos[i].pred_id != peer_infos[n].chord_id) {
+			if ( i == 0 ) { //&& peer_infos[i].pred_id != peer_infos[n].chord_id) 
 				peer_infos[i].pred_id = peer_infos[n].chord_id;
 				strcpy(peer_infos[i].pred_ip_addr, peer_infos[n].ip_addr);
 				peer_infos[i].pred_portnum = peer_infos[n].portnum;
