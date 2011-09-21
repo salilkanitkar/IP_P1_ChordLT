@@ -48,6 +48,8 @@ extern char PROTOCOL_STR[128];
 extern int is_p0;
 extern int well_known_socket;
 extern int well_known_port;
+extern int well_known_listen_socket;
+extern int well_known_listen_port;
 extern peer_info_t peer_info;
 extern peer_info_t peer_infos[10];
 extern RFC_db_rec *rfc_db_head;
@@ -71,7 +73,7 @@ extern void populate_port_num();
 extern void server_listen();
 extern int test_if_P0_alive(char [128], int);
 extern void send_message(char [128], int , char [128], char [1500]);
-extern peer_info_t find_successor(int);
+extern peer_info_t setup_successor(int);
 extern RFC_db_rec * find_keys_to_transfer(int, int);
 extern void * lookup(); //will take void * as parami
 extern void  build_GetKey_msg(char *);

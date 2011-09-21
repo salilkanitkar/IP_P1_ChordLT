@@ -20,15 +20,12 @@
 
 #define BUFLEN 60000
 
-//char msg[BUFLEN];
-//char msg_type[128];
-//char PROTOCOL_STR[128] = "Chord-LT/1.0";
-
 int flag_getkey = 0;
 
 void print_details(peer_info_t p_info)
 {
 	printf("Chord_Id:%d IP:%s Port:%d Successor:%d %s %d Pred:%d %s %d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor_id, p_info.successor_ip_addr, p_info.successor_portnum, p_info.pred_id, p_info.pred_ip_addr, p_info.pred_portnum);
+	fflush(stdout);
 }
 
 void print_RFC_Database ()
@@ -387,7 +384,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		put_in_peer_infos(chord_id, ip_addr, portnum);
 
 		peer_info_t t ;
-		t = find_successor(chord_id);
+		t = setup_successor(chord_id);
 
 		printf("\n\nThe P2P System Details \n\n");
 		print_peer_infos();
@@ -442,7 +439,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		print_details(peer_info);
 		printf("\n\n");
 
-
+		/*
 		//Build GetKey to be sent to Successor of current peer_info
 		if(flag_getkey == 0){
 		 	build_GetKey_msg(msg_1);
@@ -459,7 +456,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 			print_peer_infos();
 			printf("\n\n");
 		}
-		
+		*/
 
 	}
 	else if(strcmp(msg_type,"GetKey") == 0){
@@ -609,7 +606,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 
 void sort_RFC_db()
 {
-        int i,j,n;
+        int i,j,n=0;
         RFC_db_rec *head,*lst,*prev,*pprev = rfc_db_head,*temp = rfc_db_head;
         
         for(;temp;temp=temp->next){
@@ -818,7 +815,7 @@ int check_if_exists(int fwd_msg[32], int k, int s)
 	return 1;
 }
 
-peer_info_t find_successor(int chord_id)
+peer_info_t setup_successor(int chord_id)
 {
 
 	peer_info_t t;
@@ -966,6 +963,5 @@ peer_info_t find_successor(int chord_id)
 	return t;
 
 }
-
 
 

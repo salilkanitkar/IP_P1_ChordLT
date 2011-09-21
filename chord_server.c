@@ -12,6 +12,8 @@ char msg_type[128];
 int is_p0 = FALSE;
 int well_known_socket=-1;
 int well_known_port=0;
+int well_known_listen_socket=-1;
+int well_known_listen_port=0;
 
 RFC_db_rec *rfc_db_head = 0;
 peer_info_t peer_info;
@@ -68,9 +70,9 @@ int main(int argc, char *argv[])
 		#ifdef DEBUG_FLAG
 		print_RFC_Database();
 		#endif
-
-		sort_RFC_db();
 		
+		sort_RFC_db();
+
 	        #ifdef DEBUG_FLAG
 		printf("-------------Sorted: \n");
 	        print_RFC_Database();
@@ -93,7 +95,6 @@ int main(int argc, char *argv[])
         	        
 	        }
 */
-		
 		peer_info.chord_id = 0;
 
 		initialize_peer_infos();
@@ -117,7 +118,6 @@ int main(int argc, char *argv[])
 		peer_infos[0].pred_id = 0;
 		strcpy(peer_infos[0].pred_ip_addr, peer_info.ip_addr);
 		peer_infos[0].pred_portnum = peer_info.portnum;
-
 
 		print_peer_infos();
 
