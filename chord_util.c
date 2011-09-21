@@ -20,7 +20,7 @@
 
 #define BUFLEN 60000
 
-int flag_getkey = 0;
+int db_init = 0;
 
 void print_details(peer_info_t p_info)
 {
@@ -31,16 +31,18 @@ void print_details(peer_info_t p_info)
 void print_RFC_Database ()
 {
 	RFC_db_rec *p;
-	int c=0;
+	int count=0;
 	p = rfc_db_head;
 	printf("\nThe RFC Database: \n");
-	while(p!=NULL)
-	{
-		printf("Key : %d Value:%d  Title:%s\n",p->key, p->value,p->RFC_title);
-		p=p->next;
-		c++;
+	if ( p ) {
+		do {
+			printf("Key : %d Value:%d  Title:%s\n",p->key, p->value,p->RFC_title);
+			p=p->next;
+			count += 1;
+		} while (p!=rfc_db_head);
 	}
-//	printf("COUNT: %d\n",c);
+	printf("Number of RFCs ar this Node: %d\n", count);
+	fflush(stdout);
 }
 
 int generate_random_number(int start, int end)
@@ -222,7 +224,7 @@ printf("Enter generate_RFC_database \n");
 			q->next=p;
 			q=q->next;
 		}
-
+		p->next = rfc_db_head;
 	}	
 
 #ifdef DEBUG_FLAG
@@ -331,7 +333,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
 	int bytes_read, portnum, chord_id, successor_id;
-	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, ip_addr[128],buf[BUFLEN],msg_1[BUFLEN],msg_type_1[128]; 
+	char sendbuf[BUFLEN], filename[128] = RFC_PATH, *needle, ip_addr[128]; 
 	char *p, *q, *r, *s, *t, *u, *v, *x, *xx, *y, *yy, *z, *zz;
 	FILE *fp;
 
@@ -439,33 +441,29 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		print_details(peer_info);
 		printf("\n\n");
 
-		/*
-		//Build GetKey to be sent to Successor of current peer_info
-		if(flag_getkey == 0){
-		 	build_GetKey_msg(msg_1);
-	                strcpy(msg_type_1, "GetKey");
-	                strcpy(buf, msg_1);
-	                send_message(peer_info.successor_ip_addr, peer_info.successor_portnum, msg_type_1, buf);
-	                printf("%s Message sent from Peer with ChordID %d to its successor with ChordID %d\n", msg_type_1, peer_info.chord_id,peer_info.successor_id);
-			flag_getkey = 1;
+		if ( !db_init ) {
+			/* Build GetKey to be sent to Successor of current peer_info */
+			sprintf(msg, "GET GetKey %s\nIP:%s\nPort:%d\nChord-Id:%d\n", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum, peer_info.chord_id);
+	        	strcpy(msg_type, "GetKey");
+		        strcpy(sendbuf, msg);
+		        send_message(peer_info.successor_ip_addr, peer_info.successor_portnum, msg_type, sendbuf);
+	        	printf("%s Message sent from Peer with ChordID %d to its successor with ChordID %d\n", msg_type, peer_info.chord_id, peer_info.successor_id);
+			db_init = 1;
 		}
-		
 
 		if ( peer_info.chord_id == 0 ) {
 			printf("\n\n The P2P System Details \n\n");
 			print_peer_infos();
 			printf("\n\n");
 		}
-		*/
 
 	}
 	else if(strcmp(msg_type,"GetKey") == 0){
                 needle = strtok(msg, "\n");
                 needle = strtok(NULL, "\n");
-		
-	
                 q = strtok(NULL, "\n");
-				
+		u = strtok(NULL, "\n");
+
                 p = strtok(needle, ":");
                 p = strtok(NULL, ":");
 	        strcpy(ip_addr, p);
@@ -474,131 +472,138 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
                 r = strtok(NULL, ":");
                 portnum = atoi(r);
 
+                s = strtok(u, ":");
+                t = strtok(NULL, ":");
+                chord_id = atoi(t);
+
                 fflush(stdout);
 		
-		//Now.. find the appropriate keys to be sent to node with ip_addr and portnum
+		/* Now.. find the appropriate keys to be sent to node with ip_addr and portnum */
 		RFC_db_rec *new_rfc,*p;
-	
-			
+		int i, k;
+		for (i=0;i<10;i++) {
+			if ( peer_infos[i].chord_id != -1 ) {
+				if (peer_infos[i].chord_id == chord_id)
+					k=i;
+			} else
+				break;
+		}
 		
-		new_rfc = find_keys_to_transfer(peer_info.chord_id,peer_info.pred_id);
-		if(new_rfc==NULL)
-			printf("*****NULL\n");
-		if(new_rfc!=NULL){
-			printf("NEW LIST HEAD key: %d\n",new_rfc -> key);
-			char lists[15000],rec[200];
-			int lc = 0;
-			p = NULL;
-			lists[0] = '\0';
-			for(p = new_rfc ; p!=NULL ; p = p -> next)
-			{
-				sprintf(rec, "%d,%d,%s\n",p -> key, p -> value, p -> RFC_title);	
-				strcat(lists,rec);
-				rec[0] = '\0';
-				lc ++; // LC has the nodeList count.. used in else if of NodeList to parse the message
-			}
-			
-			printf("Remaining RFC List at this peer : \n");
-			print_RFC_Database();
-			//Build NodeList message
-	                sprintf(sendbuf, "POST NodeList %s\nchord_id:%d\ncount:%d\n|%s", PROTOCOL_STR, chord_id, lc, lists);
-			lc=0;
-			lists[0] = '\0';
-                	strcpy(msg_type, "NodeList");
-	                send_message(ip_addr, portnum, msg_type, sendbuf);
+		if ( k == 0 ) {
+			new_rfc = find_keys_to_transfer(peer_infos[i-1].chord_id, chord_id);
 		}
-		else{ //no sublist found! .. return error message
-			 strcpy(msg_type, "NodeList");
-			printf("NOTHING TO SEND********\n");
-			 sprintf(sendbuf,"POST NodeList Error!\n");
-			 send_message(ip_addr, portnum, msg_type, sendbuf);
+		else
+			new_rfc = find_keys_to_transfer(peer_infos[k-1].chord_id, chord_id);
+
+		#ifdef DEBUG_FLAG
+		p = new_rfc;
+	        do {
+                	printf("%d %d %s\n", p->key, p->value, p->RFC_title);
+        	        p = p->next;
+	        } while (p != new_rfc);
+		#endif
+
+		char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
+		int count=0;
+		strcpy(listbuf, "");
+	
+		if ( new_rfc ) { 		
+			p = new_rfc;
+			do {
+				sprintf(tmpbuf, "%d:%d:%s\n", p->key, p->value, p->RFC_title);
+				strcat(listbuf, tmpbuf);
+				p = p->next;
+				count += 1;
+			} while ( p!= new_rfc ); 
 		}
+		fflush(stdout);
+
+		//Build NodeList message
+                sprintf(sendlistbuf, "POST NodeList %s\nchord_id:%d\ncount:%d\n%s", PROTOCOL_STR, chord_id, count, listbuf);
+               	strcpy(msg_type, "NodeList");
+                send_message(ip_addr, portnum, msg_type, sendlistbuf);
  		
+		printf("NodeList Message sent: %d to %d\n", chord_id, peer_info.chord_id);
 	}
 	else if(strcmp(msg_type, "NodeList")==0){
-	    needle = strtok(msg, "\n");
-	    
 
-	   if(strcmp(needle, "POST NodeList Error!")!=0) // no nodelists
-	   {
-//                needle = strtok(msg, "\n");
-		
+		int count, cnt=0, key, value, k=0, m;
+		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500];
+		RFC_db_rec *node_p, *node_q;
 
+		strcpy(dbbuf, msg);
+
+                needle = strtok(msg, "\n");
                 needle = strtok(NULL, "\n");
-                q = strtok(NULL, "\n");
-		p = strtok(q, ":");
-		s = strtok(NULL, "\n");
-		int cnt = atoi(s);
-		int i;
-		printf("CNT :: %d\n",cnt);
+                needle = strtok(NULL, "\n");
 		
-
-		for(i = 0; msg[i]!='|';i++);
-		char key[25],value[25],title[100];
-		int kk=0,vv=0,tt=0,limit = 0;
-		RFC_db_rec *head,*p,*q;
+                p = strtok(needle, ":");
+                p = strtok(NULL, ":");
+                count = atoi(p);
 		
+		w = strtok(dbbuf, "\n");
+		w = strtok(NULL, "\n");
+		w = strtok(NULL, "\n");
 
-			
-		for(i = i+1;msg[i]!='\0' && (limit < cnt);){
-			
-			while(msg[i]!=',')	
-				key[kk++] = msg[i++];
-			key[kk] = '\0';
-			kk = 0; //key[kk] = '\0';
-			i++;
+		printf("\n\n");
 
-			while(msg[i]!=',')
-				value[vv++] = msg[i++];
-                        value[vv] = '\0';
-			vv = 0; //value[vv] = '\0';
- 			i++;
-
-			
-			while(msg[i]!='\n')
-				title[tt++] = msg[i++];
-                        title[tt] = '\0';
-			tt = 0; //title[tt] = '\0';
-			i++;
-	               
- 						
-		
-			p = (RFC_db_rec *)malloc(sizeof(RFC_db_rec));
- 	                if (!p) {
-                        printf("Error while allocating memory!!\n");
-                        exit(-1);
-                        }
- 			
-		
-			p -> next = NULL;	
-			p -> key = atoi(key);
-			p -> value = atoi(value);
-			
-			strcpy(p -> RFC_title, title);
-			sprintf(p->RFC_body, "ID:%d Value:%d \n<<RFC Text Goes Here>>", p->key, p->value);
-		
-	                if ( rfc_db_head == NULL) {
-	                        rfc_db_head = p;
-	                        q = p;
-	                } else {
-	                        q->next=p;
-	                        q=q->next;
-	                }
-
-			
-			limit++;
+		if ( count == 0 ) {
+			printf("The RFC Database at this Node is Empty!! \n");
 		}
-		//head = NULL;
-	
-	        sort_RFC_db();
+		while ( cnt<count ) {
 
-                #ifdef DEBUG_FLAG
-                printf("-------------Sorted: \n");
-                print_RFC_Database();
-                #endif
-	   }
-		
-		
+			w = strtok(NULL, "\n");
+			strcpy(t2, w);
+			k=0;m=0;
+			while( t2[m] != ':' ) {
+				t1[k] = t2[m];
+				k++;m++;
+			}
+			t1[k] = '\0';
+			key = atoi(t1);
+                        k=0;m++;
+                        while( t2[m] != ':' ) {
+                                t1[k] = t2[m];
+                                k++; m++;
+                        }
+                        t1[k] = '\0';
+			value = atoi(t1);
+
+                        k=0;m++;
+                        while( t2[m] != '\0' ) {
+                                t1[k] = t2[m];
+                                k++;m++;
+                        }
+                        t1[k] = '\0';
+			strcpy(title, t1);
+
+			node_p = (RFC_db_rec *)malloc(sizeof(RFC_db_rec));
+	                if (!node_p) {
+        	                printf("Error while allocating memory!!\n");
+                	        exit(-1);
+	                }
+        	        node_p->next = NULL;
+                	node_p->key = key;
+	                node_p->value = value;
+        	        strcpy(node_p->RFC_title, title);
+
+	                if ( rfc_db_head == NULL) {
+        	                rfc_db_head = node_p;
+                	        node_q = node_p;
+	                } else {
+        	                node_q->next=node_p;
+                	        node_q=node_q->next;
+	                }
+        	        node_p->next = rfc_db_head;
+			cnt++;
+		}
+		printf("RFC Db LL created! \n");
+
+	} else if ( strcmp(msg_type, "PrintRFCDb")==0 ) {
+
+	        printf("The RFC db at this node \n");
+	        print_RFC_Database();
+
 	}
 
 }
@@ -606,109 +611,123 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 
 void sort_RFC_db()
 {
-        int i,j,n=0;
-        RFC_db_rec *head,*lst,*prev,*pprev = rfc_db_head,*temp = rfc_db_head;
         
-        for(;temp;temp=temp->next){
-                n++;
-        }
-        
-        for(i = 0; i < n-1; i++)
-        {
-                for(j=0,lst = rfc_db_head ; lst && lst->next && (j <= n-i-1);j++)
-                {
-                        if(!j)
-                                prev = lst;
-                        if(lst -> key > lst -> next -> key)
-                        {
-                                temp = (lst -> next? lst -> next -> next:0);
-                                if(!j && (prev == rfc_db_head))
-                                        rfc_db_head = lst -> next;
-                                pprev = lst -> next;
-                                prev -> next = lst -> next;
-                                lst -> next -> next = lst;
-                                lst -> next = temp;
-                                prev = pprev;
-                        }
-                        else
-                        {
-                                lst = lst -> next;
-                                if(j)
-                                        prev = prev -> next;
-                        }
-                }
-        }
-//        return list;
+	int i, j, n=0;
+	RFC_db_rec *p, *q, x;
+
+	p = rfc_db_head;
+	do {
+		n += 1;
+		p = p->next;
+	} while ( p!=rfc_db_head );
+
+	for( i=0, p=rfc_db_head ; i<n ;  p = p->next , ++i) { 
+		for( j=0 , q = rfc_db_head  ; j < n-1 ;  q = q->next , ++j) { 
+			if( q->key > (q->next)->key ) {
+
+				x.key = q->key;
+				x.value = q->value;
+				strcpy(x.RFC_title, q->RFC_title);
+	
+				q->key = (q->next)->key;
+				q->value = (q->next)->value;
+				strcpy(q->RFC_title, (q->next)->RFC_title);
+	
+				(q->next)->key = x.key;
+				(q->next)->value = x.value;
+				strcpy((q->next)->RFC_title, x.RFC_title);
+			}
+		}
+	}
+ 	
 }
 
+/* Is key in between prev and next*/
+int is_in_between(int prev, int next, int key)
+{
+	if ( prev <= next ) {
+		if ( prev <= key && key < next ) 
+			return 1;
+	}
+	else {
+		if ( (prev < key && key > next) || ( prev > key && key < next ) ) 
+			return 1;
+	}
 
+	return 0;
+}
 
+void delete_node(RFC_db_rec *r)
+{
+	RFC_db_rec *tmp = rfc_db_head, *prev;
 
+	prev = rfc_db_head;
+	do {
+		prev = prev->next;
+	} while ( prev->next != rfc_db_head);
+
+	if ( tmp == r ) {
+		rfc_db_head = tmp->next;
+		prev->next = rfc_db_head;
+	}
+	else {
+		while ( tmp->next != r ) {
+			tmp = tmp->next;		
+		}
+		tmp->next = r->next;
+		free(r);
+	}
+}
 
 RFC_db_rec * find_keys_to_transfer(int lower_bound, int upper_bound)
 {
-	int i,flag=0;
-	RFC_db_rec *seek,*new,*new1,*prev,*ahead,*new2;
-	seek = rfc_db_head;
-	new = NULL;
 
+	RFC_db_rec *new_head=NULL, *tmp=rfc_db_head, *p, *q, *r;
+	int n=0, i=0;
 
-		
-	if(lower_bound > upper_bound)
-		lower_bound = 0;
-
-	printf("RFC LIST HEAD IS AT: %d \n",rfc_db_head->key);	
-	if((upper_bound - lower_bound) < rfc_db_head -> key) //no NodeList can be foung
-	{
-		printf("HERE.. returning NULL \n");
+	if ( tmp == NULL )
 		return NULL;
-	}
 
-	printf("------------Lower Bound: %d \t Upper Bound: %d\n",lower_bound,upper_bound);	
-	seek = rfc_db_head;
-	while(seek -> key <= lower_bound){
-		flag = 1;
-		ahead = seek;
-		seek = seek -> next;
-	}
-	
+	do {
+		if ( is_in_between(lower_bound, upper_bound, tmp->key) ) {
+			p = (RFC_db_rec *)malloc(sizeof(RFC_db_rec)*1);
+			p->key = tmp->key;
+			p->value = tmp->value;
+			strcpy(p->RFC_title, tmp->RFC_title);
 
-	if(flag ==1)	{
-//		if(ahead!=NULL)
-		prev = ahead; //prev points to the last node that is <= lower_bound (it will point to the 1st entry which is greater than upper_bound)
-
-	}
-//	if(seek!=NULL){
-		new = seek; //new points to 1st entry greater than the lowerbound
-		//printf("AFTER LB: %d \n",new -> key);
-		new1 = new;
-	
-		new2 = new1;
-		while(new1 -> key <= upper_bound){
-			ahead = new1;
-			new1 = new1 -> next;
+       			if ( new_head == NULL) {
+		                new_head = p;
+                		q = p;
+		        } else {
+                		q->next=p;
+		                q=q->next;
+        		}
+		        p->next = new_head;
+			
+			if (peer_info.chord_id != 0) {
+				r = tmp;
+				delete_node(r);
+			}
 		}
+		tmp = tmp->next;
+		i += 1;
+	} while ( i<50 );
 	
-		if(flag ==1)
-			prev -> next = new1;
-		ahead -> next = NULL;
-		if(flag == 0)
-			rfc_db_head = new1;
-		
-//	}
-//	else
-//		return NULL;
-	return new2;
-      
+	
+	#ifdef DEBUG_FLAG
+	printf("The RFCs to be transmitted --> \n");
+	tmp = new_head;
+	do {
+		printf("%d %d %s\n", tmp->key, tmp->value, tmp->RFC_title);
+		tmp = tmp->next;
+	} while (tmp!= new_head);
+
+	printf("The RFC db at this node \n");
+	print_RFC_Database();
+	#endif
+
+	return new_head;
 }
-
-void  build_GetKey_msg(char *msg)
-{
-        sprintf(msg, "GET GetKey %s\nIP:%s\nPort:%d\n", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum);
-
-}
-
-
 
 void server_listen()
 {

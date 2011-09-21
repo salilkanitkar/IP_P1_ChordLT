@@ -1,2 +1,11 @@
 sskanitk
 sssane
+
+Types of Messages -->
+1) FetchRFC
+2) RegisterNode
+3) NodeIdentity
+4) GetRFC
+5) NodeList
+6) PrintRFCDb
+

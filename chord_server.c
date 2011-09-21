@@ -63,38 +63,21 @@ int main(int argc, char *argv[])
 			RFC_Dir[i][0]='\0';
 		}
 
-		//This API Populates the RFC Titles Directory
+		/* This API Populates the RFC Titles Directory */
 		populate_RFC_Directory(RFC_Dir);
 		generate_RFC_Database(1000,6000,RFC_Dir);
 
 		#ifdef DEBUG_FLAG
-		print_RFC_Database();
+		//print_RFC_Database();
+		//printf("Done Printing!\n");
 		#endif
 		
 		sort_RFC_db();
 
 	        #ifdef DEBUG_FLAG
-		printf("-------------Sorted: \n");
 	        print_RFC_Database();
                 #endif
 		
-/*		RFC_db_rec *new;
-		new = find_keys_to_transfer(100,400);
-		
-	        #ifdef DEBUG_FLAG
-                printf("-------------Reduced DB: \n");
-                print_RFC_Database();
-                #endif
-
-		printf("------------To be Sent: \n");
-		RFC_db_rec *tp;
-		tp = new;
-		while(tp!=NULL){
-		     printf("Key : %d Value:%d  Title:%s\n",tp->key, tp->value,tp->RFC_title);
-                	tp=tp->next;
-        	        
-	        }
-*/
 		peer_info.chord_id = 0;
 
 		initialize_peer_infos();
@@ -134,16 +117,10 @@ int main(int argc, char *argv[])
 		strcpy(msg_type, "RegisterNode");
 		strcpy(buf, msg);
 		send_message(ip, port, msg_type, buf);
-		printf("RegisterNode Message sent to P0\n");
-
-
-		
+		printf("RegisterNode Message sent to P0\n");		
 	
 		server_listen();
 	
-		//send generate_chord_id msg to P0 - include my ip and myport in this msg
-		//receive chordid & successor from P0
-
 	}
 
 	printf("\n");
