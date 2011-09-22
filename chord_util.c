@@ -330,7 +330,9 @@ void populate_port_num()
 
 int get_rfc(char title[128], char ip_addr[128], int portnum)
 {
-			printf("Ekde!! \n");
+	//	#ifdef DEBUG_FLAG
+			printf("Ekde!! IP addr: %s port %d\n",ip_addr,portnum);
+	//	#endif
 			char sendbuf[BUFLEN];
 
 			struct sockaddr_in sock_client;
@@ -351,7 +353,10 @@ int get_rfc(char title[128], char ip_addr[128], int portnum)
 
 			strcpy(sendbuf, "");
 			sprintf(sendbuf, "GET FetchRFC %s %s\nIP:%s\nPort:%d\n", title, PROTOCOL_STR, ip_addr, portnum);
+		
+		//#ifdef DEBUG_FLAG
 			printf("sendbuf:\n%s\n", sendbuf);
+	//	#endif
 
 	                if ( send(sock, sendbuf, BUFLEN, 0) == -1 ) {
         	        	printf("send failed ");
@@ -361,20 +366,26 @@ int get_rfc(char title[128], char ip_addr[128], int portnum)
 			FILE *fp = fopen(title, "wb");
                 	char recvbuf[BUFLEN], *cp;
 	                int bytes_read=1;
+
+		#ifdef DEBUG_FLAG
+			printf("Just before while (1)\n");
+		#endif
+
         	        while ( 1 ) {
                 	        bytes_read = recv(sock, recvbuf, 500, 0);
-                        	if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) {
-					printf("TIme to go... \n");
-                                	*cp = '\0';
-	                                fwrite(recvbuf, 1, bytes_read-7, fp);
+                        	/*if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) { This was original line*/ 
+                        	if ( bytes_read <= 0 ) {
+                                	cp = '\0';	//old line was *cp = '\0'
+	                             //   fwrite(recvbuf, 1, bytes_read-7, fp); This was removed coz we cant write -1 to the file
         	                        break;
                 	        }
-				printf("3\n");
                         	fwrite(recvbuf, 1, bytes_read, fp);
 
                 	}
 
+		#ifdef DEBUG_FLAG
 			printf("Receive Done\n");
+		#endif
 	                fclose(fp);
 
 			close(sock);
@@ -408,7 +419,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 			}
 
 		}
-
+		printf("Sending end line of RFC\n");
 		send(client_sock, "FILEEND", 7, 0);
 		
 		fclose(fp);
@@ -665,15 +676,18 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 
 		int ret;
 		node_p = rfc_db_head;
-		//do {
+		do {
 
 			ret = get_rfc(node_p->RFC_title, ip_addr, portnum);
 
+		#ifdef DEBUG_FLAG
+			printf("Starting Next Fetch\n");
+		#endif
+
 			node_p = node_p->next;
 
-			printf("Starting Next Fetch\n");
 
-		//} while (node_p != rfc_db_head);
+		} while (node_p != rfc_db_head);
 
 		printf("RFC Db LL created! \n");
 
