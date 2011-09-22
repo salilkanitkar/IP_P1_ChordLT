@@ -19,7 +19,6 @@
 #include "chord_server.h"
 
 #define BUFLEN 60000
-
 int db_init = 0;
 
 void print_details(peer_info_t p_info)
@@ -329,6 +328,59 @@ void populate_port_num()
 	peer_info.portnum = portnum;
 }
 
+int get_rfc(char title[128], char ip_addr[128], int portnum)
+{
+			printf("Ekde!! \n");
+			char sendbuf[BUFLEN];
+
+			struct sockaddr_in sock_client;
+			int sock, slen = sizeof(sock_client), ret;
+
+		        sock = socket(AF_INET, SOCK_STREAM, 0);
+        		memset((char *) &sock_client, 0, sizeof(sock_client));
+
+	        	sock_client.sin_family = AF_INET;
+	        	sock_client.sin_port = htons(portnum);
+		        sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+ 		        ret = connect(sock, (struct sockaddr *) &sock_client, slen);
+	        	if (ret == -1) {
+                		printf("Connect failed! Check the IP and port number of the Sever! \n");
+		                exit(-1);
+        		}
+
+			strcpy(sendbuf, "");
+			sprintf(sendbuf, "GET FetchRFC %s %s\nIP:%s\nPort:%d\n", title, PROTOCOL_STR, ip_addr, portnum);
+			printf("sendbuf:\n%s\n", sendbuf);
+
+	                if ( send(sock, sendbuf, BUFLEN, 0) == -1 ) {
+        	        	printf("send failed ");
+                	        exit(-1);
+	                }
+
+			FILE *fp = fopen(title, "wb");
+                	char recvbuf[BUFLEN], *cp;
+	                int bytes_read=1;
+        	        while ( 1 ) {
+                	        bytes_read = recv(sock, recvbuf, 500, 0);
+                        	if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) {
+					printf("TIme to go... \n");
+                                	*cp = '\0';
+	                                fwrite(recvbuf, 1, bytes_read-7, fp);
+        	                        break;
+                	        }
+				printf("3\n");
+                        	fwrite(recvbuf, 1, bytes_read, fp);
+
+                	}
+
+			printf("Receive Done\n");
+	                fclose(fp);
+
+			close(sock);
+			return (0);	
+}
+
 void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
@@ -360,6 +412,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		send(client_sock, "FILEEND", 7, 0);
 		
 		fclose(fp);
+		close(client_sock);
 
 		printf("Node %d is done sending an RFC to a Client.\n\n", peer_info.chord_id);
 		printf("\n\n");
@@ -519,37 +572,46 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		fflush(stdout);
 
 		//Build NodeList message
-                sprintf(sendlistbuf, "POST NodeList %s\nchord_id:%d\ncount:%d\n%s", PROTOCOL_STR, chord_id, count, listbuf);
+                sprintf(sendlistbuf, "POST NodeList %s\nIP:%s\nPortnum:%d\ncount:%d\n%s", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum, count, listbuf);
                	strcpy(msg_type, "NodeList");
                 send_message(ip_addr, portnum, msg_type, sendlistbuf);
  		
 		printf("NodeList Message sent: %d to %d\n", chord_id, peer_info.chord_id);
 	}
-	else if(strcmp(msg_type, "NodeList")==0){
+	else if(strcmp(msg_type, "NodeList")==0) {
 
-		int count, cnt=0, key, value, k=0, m;
-		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500];
+		int count, cnt=0, key, value, k=0, m, portnum;
+		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500], ip_addr[128];
 		RFC_db_rec *node_p, *node_q;
 
 		strcpy(dbbuf, msg);
 
                 needle = strtok(msg, "\n");
                 needle = strtok(NULL, "\n");
-                needle = strtok(NULL, "\n");
-		
-                p = strtok(needle, ":");
+                y = strtok(NULL, "\n");
+		z = strtok(NULL, "\n");
+
+		xx = strtok(needle, ":");
+		xx = strtok(NULL, ":");
+		strcpy(ip_addr, xx);
+
+		yy = strtok(y, ":");
+		yy = strtok(NULL, ":");
+		portnum = atoi(yy);
+
+                p = strtok(z, ":");
                 p = strtok(NULL, ":");
                 count = atoi(p);
 		
 		w = strtok(dbbuf, "\n");
 		w = strtok(NULL, "\n");
 		w = strtok(NULL, "\n");
-
-		printf("\n\n");
+		w = strtok(NULL, "\n");
 
 		if ( count == 0 ) {
 			printf("The RFC Database at this Node is Empty!! \n");
 		}
+
 		while ( cnt<count ) {
 
 			w = strtok(NULL, "\n");
@@ -596,7 +658,23 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 	                }
         	        node_p->next = rfc_db_head;
 			cnt++;
+
 		}
+
+		printf("Request for the actual RFC Files..... \n");
+
+		int ret;
+		node_p = rfc_db_head;
+		//do {
+
+			ret = get_rfc(node_p->RFC_title, ip_addr, portnum);
+
+			node_p = node_p->next;
+
+			printf("Starting Next Fetch\n");
+
+		//} while (node_p != rfc_db_head);
+
 		printf("RFC Db LL created! \n");
 
 	} else if ( strcmp(msg_type, "PrintRFCDb")==0 ) {
