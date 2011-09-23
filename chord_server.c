@@ -17,7 +17,7 @@ int well_known_listen_port=0;
 
 RFC_db_rec *rfc_db_head = 0;
 peer_info_t peer_info;
-peer_info_t peer_infos[10];
+peer_info_t peer_list[10];
 
 void build_RegisterNode_msg();
 
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 		is_p0 = TRUE;
 		printf("\nNode P0 is starting up..... \n");
 
-	} else if ( argc == 3 && (strcmp(argv[2], "5000")==0) ) {
+	} else if ( argc == 3 /*&& (strcmp(argv[2], "5000")==0)*/ ) {
 
 		/* This is a Peer Node */
 		strcpy(ip,argv[1]);
@@ -74,35 +74,36 @@ int main(int argc, char *argv[])
 		
 		sort_RFC_db();
 
-	        #ifdef DEBUG_FLAG
-	        print_RFC_Database();
-                #endif
+	    #ifdef DEBUG_FLAG
+	    print_RFC_Database();
+        #endif
 		
 		peer_info.chord_id = 0;
 
-		initialize_peer_infos();
+		initialize_peer_list();
 
 		populate_public_ip();
 		well_known_port = CHORD_PORT;
 		populate_port_num();
 
-		peer_info.successor_id = 0;
-		strcpy(peer_info.successor_ip_addr, peer_info.ip_addr);
-		peer_info.successor_portnum = peer_info.portnum;
-		peer_info.pred_id = 0;
-		strcpy(peer_info.pred_ip_addr, peer_info.ip_addr);
-		peer_info.pred_portnum = peer_info.portnum;
+		/*TODO:Instead of below code.. this should be a call to put_in_peer_list()*/
+		peer_info.successor[0].chord_id = 0;
+		strcpy(peer_info.successor[0].ip_addr, peer_info.ip_addr);
+		peer_info.successor[0].portnum = peer_info.portnum;
+		peer_info.pred.chord_id = 0;
+		strcpy(peer_info.pred.ip_addr, peer_info.ip_addr);
+		peer_info.pred.portnum = peer_info.portnum;
 
-		put_in_peer_infos(peer_info.chord_id, peer_info.ip_addr, peer_info.portnum);
+		put_in_peer_list(peer_info.chord_id, peer_info.ip_addr, peer_info.portnum);
 
-		peer_infos[0].successor_id = 0;
-		strcpy(peer_infos[0].successor_ip_addr, peer_info.ip_addr);
-		peer_infos[0].successor_portnum = peer_info.portnum;
-		peer_infos[0].pred_id = 0;
-		strcpy(peer_infos[0].pred_ip_addr, peer_info.ip_addr);
-		peer_infos[0].pred_portnum = peer_info.portnum;
+		peer_list[0].successor[0].chord_id = 0;
+		strcpy(peer_list[0].successor[0].ip_addr, peer_info.ip_addr);
+		peer_list[0].successor[0].portnum = peer_info.portnum;
+		peer_list[0].pred.chord_id = 0;
+		strcpy(peer_list[0].pred.ip_addr, peer_info.ip_addr);
+		peer_list[0].pred.portnum = peer_info.portnum;
 
-		print_peer_infos();
+		print_peer_list();
 
 		server_listen();
 
