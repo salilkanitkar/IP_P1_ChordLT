@@ -21,6 +21,9 @@
 #define BUFLEN 60000
 int db_init = 0;
 
+RFC_db_rec *new_head=0;
+int ll_flag = 0;
+
 void print_details(peer_info_t p_info)
 {
 	printf("Chord_Id:%d IP:%s Port:%d Successor:%d %s %d Pred:%d %s %d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor[0].chord_id, p_info.successor[0].ip_addr, p_info.successor[0].portnum, p_info.pred.chord_id, p_info.pred.ip_addr, p_info.pred.portnum);
@@ -354,7 +357,7 @@ void populate_port_num()
 	peer_info.portnum = portnum;
 }
 
-int get_rfc(char title[128], char ip_addr[128], int portnum)
+int get_rfc_1(char title[128], int value, char ip_addr[128], int portnum)
 {
 			#ifdef DEBUG_FLAG
 			printf("Ekde!! IP addr: %s port %d\n",ip_addr,portnum);
@@ -378,7 +381,7 @@ int get_rfc(char title[128], char ip_addr[128], int portnum)
         		}
 
 			strcpy(sendbuf, "");
-			sprintf(sendbuf, "GET FetchRFC %s %s\nIP:%s\nPort:%d\n", title, PROTOCOL_STR, ip_addr, portnum);
+			sprintf(sendbuf, "GET GetRFC %s\nIP:%s\nPort:%d\nRFC-Value:%d\nFlag:0\n", PROTOCOL_STR, ip_addr, portnum, value);
 		
 			#ifdef DEBUG_FLAG
 			printf("sendbuf:\n%s\n", sendbuf);
@@ -418,12 +421,140 @@ int get_rfc(char title[128], char ip_addr[128], int portnum)
 			return (0);	
 }
 
+int rand_portnum=0;
+int rand_sock=0;
+void populate_random_port_num()
+{
+
+        struct sockaddr_in sock_server;
+	rand_portnum = 50000;
+
+        if ((rand_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+                printf("error in socket creation");
+                exit(1);
+        }
+
+        memset((char *) &sock_server, 0, sizeof(sock_server));
+        sock_server.sin_family = AF_INET;
+        sock_server.sin_port = htons(rand_portnum);
+        sock_server.sin_addr.s_addr = inet_addr(peer_info.ip_addr);
+
+        while (bind(rand_sock, (struct sockaddr *) &sock_server, sizeof(sock_server)) == -1) {
+                rand_portnum = rand() % ( (65535-1024) + 1024);
+                sock_server.sin_port = htons(rand_portnum);
+        }
+
+        if (listen(rand_sock, 10) == -1) {
+                printf("listen error");
+                exit(1);
+        }
+	
+}
+
+peer_info_t listen_on_random_port()
+{
+	struct sockaddr_in sock_server, sock_client;
+        int slen = sizeof(sock_client);
+        char recvbuf[BUFLEN];
+        int client;
+        int ret;
+        int opt=1;
+	char *a,*b,*c;
+	peer_info_t t;
+
+        if ((client = accept(rand_sock, (struct sockaddr *) &sock_client, &slen)) == -1) {
+                printf("accept error");
+                exit(1);
+        }
+
+        if ((ret = recv(client, recvbuf, BUFLEN, 0)) == -1) {
+                printf("recv error: %d\n", ret);
+                exit(1);
+        }
+
+        a = strtok(recvbuf, ":");
+	b = strtok(NULL, ":");
+	c = strtok(NULL, ":");
+
+	t.chord_id = atoi(a);
+	strcpy(t.ip_addr, b);
+	t.portnum = atoi(c);
+	#ifdef DEBUG_FLAG
+	printf("In liten_on %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+	#endif
+
+        close(client);
+
+        return(t);
+}
+
+int get_rfc(char title[128], int value, char ip_addr[128], int portnum)
+{
+			char sendbuf[BUFLEN];
+
+			struct sockaddr_in sock_client;
+			int sock, slen = sizeof(sock_client), ret;
+
+		        sock = socket(AF_INET, SOCK_STREAM, 0);
+        		memset((char *) &sock_client, 0, sizeof(sock_client));
+
+	        	sock_client.sin_family = AF_INET;
+	        	sock_client.sin_port = htons(portnum);
+		        sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+ 		        ret = connect(sock, (struct sockaddr *) &sock_client, slen);
+	        	if (ret == -1) {
+                		printf("Connect failed! Check the IP and port number of the Sever! \n");
+		                exit(-1);
+        		}
+
+			strcpy(sendbuf, "");
+			sprintf(sendbuf, "GET GetRFC %s\nIP:%s\nPort:%d\nRFC-Value:%d\nFlag:1\n", PROTOCOL_STR, ip_addr, portnum, value);
+		
+			#ifdef DEBUG_FLAG
+			printf("sendbuf:\n%s\n", sendbuf);
+			#endif
+
+	                if ( send(sock, sendbuf, BUFLEN, 0) == -1 ) {
+        	        	printf("send failed ");
+                	        exit(-1);
+	                }
+
+			FILE *fp = fopen(title, "wb");
+                	char recvbuf[BUFLEN], *cp;
+	                int bytes_read=1;
+
+			#ifdef DEBUG_FLAG
+			printf("Just before while (1)\n");
+			#endif
+
+                        while ( 1 ) {
+                                bytes_read = recv(sock, recvbuf, 500, 0);
+                                /*if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) { This was original line*/
+                                if ( bytes_read <= 0 ) {
+                                        cp = '\0';      //old line was *cp = '\0'
+                                     //   fwrite(recvbuf, 1, bytes_read-7, fp); This was removed coz we cant write -1 to the file
+                                        break;
+                                }
+                                fwrite(recvbuf, 1, bytes_read, fp);
+
+                        }
+
+		#ifdef DEBUG_FLAG
+			printf("Receive Done\n");
+		#endif
+	                fclose(fp);
+
+			close(sock);
+			return (0);
+}
+
 void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 {
 		
-	int bytes_read, portnum, chord_id, successor_id,rfc_value;
-	char sendbuf[BUFLEN], *needle, ip_addr[128];
-	char filename[128];// = RFC_PATH;
+	int bytes_read, portnum, chord_id, successor_id,rfc_value, key_val, val, send_RFC_reply=0;
+	char sendbuf[BUFLEN], *needle, ip_addr[128], *keyval;
+	char title[128]= "", filename[128];
 	char *p, *q, *r, *s, *t, *u, *v, *x, *xx, *y, *yy, *z, *zz;
 	FILE *fp;
 
@@ -432,11 +563,40 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		needle = strtok(msg, " ");
 		needle = strtok(NULL, " ");
 		needle = strtok(NULL, " ");
+		keyval = strtok(NULL, " ");
+		val = atoi(keyval);
+		key_val = val % 1024;
+		strcpy(title, needle);
+		printf("\nThe RFC requested is: Key:%d Value %d Title: %s\n", key_val, val, title);
 
-		printf("\nThe needle is: %s\n", needle);
+		if ( peer_info.chord_id == peer_info.pred.chord_id && peer_info.chord_id == peer_info.successor[0].chord_id ) {
+			printf("Edge Case!\n");
+			send_RFC_reply = 1;
+		}
+		else if ( is_in_between(peer_info.pred.chord_id, peer_info.chord_id, key_val) ) {
+			/* This means that I have the RFC */
+			send_RFC_reply = 1;
+		} else if ( is_in_between(peer_info.chord_id, peer_info.successor[0].chord_id, key_val) ) {
+			/* My Successor has the RFC. Send GetRFC to him to get the RFC body. */
+			get_rfc(title, val, peer_info.successor[0].ip_addr, peer_info.successor[0].portnum);
+			send_RFC_reply = 1;
+		} else {
+			printf("Forwards are required to fetch this RFC!!! \n");
+			rand_sock = 0;
+			rand_portnum = 0; 
+			populate_random_port_num();
+			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, peer_info.ip_addr, rand_portnum, val);
+        	        strcpy(msg_type, "ForwardGet");
+                	send_message(peer_info.successor[0].ip_addr, peer_info.successor[0].portnum, msg_type, sendbuf);
+			peer_info_t t;
+			t = listen_on_random_port();
+			printf("The Requested RFC is at Node %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+			get_rfc(title, val, t.ip_addr, t.portnum);
+			send_RFC_reply = 1;
+		}
+		
 		strcpy(filename, "");
-		strcat(filename, needle); //filename can be RFC  Value or FileName (not changing the variable :P)
-
+		strcat(filename, title);
 			
 		fp = fopen(filename, "rb");
 
@@ -590,15 +750,35 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		else
 			new_rfc = find_keys_to_transfer(peer_list[k-1].chord_id, chord_id);
 
-		#ifdef DEBUG_FLAG
 		p = new_rfc;
+
+		new_head = NULL;
+		RFC_db_rec *new_p, *new_q;
+
 		if ( new_rfc) {
 		        do {
+				#ifdef DEBUG_FLAG
         	        	printf("%d %d %s\n", p->key, p->value, p->RFC_title);
+				#endif
+
+				new_p = (RFC_db_rec *)malloc(sizeof(RFC_db_rec)*1);
+				new_p->key = p->key;
+				new_p->value = p->value;
+				strcpy(new_p->RFC_title, p->RFC_title);
+				if ( new_head ==NULL ) {
+					new_head = new_p;
+					new_q = new_p;
+				} else {
+					new_q->next = new_p;
+					new_q = new_q->next;
+				}
+				new_p->next = new_head;
+
         		        p = p->next;
+
 		        } while (p != new_rfc);
 		}
-		#endif
+		
 
 		char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
 		int count=0;
@@ -714,7 +894,7 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 		do {
 
 			printf("Fetching RFC with key: %d\n", node_p->key);
-			ret = get_rfc(node_p->RFC_title, ip_addr, portnum);
+			ret = get_rfc_1(node_p->RFC_title, node_p->value, ip_addr, portnum);
 
 		#ifdef DEBUG_FLAG
 			printf("Starting Next Fetch\n");
@@ -737,9 +917,12 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
 	}
 	else if(strcmp(msg_type, "GetRFC") == 0 ){ // Request for the final Server who HAS the RFC
 		//this message will build the response with ACTUAL body of RFC.
+		char *w, *u, *v;
                 needle = strtok(msg, "\n");
                 needle = strtok(NULL, "\n");
                 q = strtok(NULL, "\n");
+		w = strtok(NULL, "\n");
+		u = strtok(NULL, "\n");
 
                 p = strtok(needle, ":");
                 p = strtok(NULL, ":");
@@ -749,29 +932,37 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
                 r = strtok(NULL, ":");
                 portnum = atoi(r);
 
-		s = strtok(q,":");
+		s = strtok(w,":");
 		s = strtok(NULL,":");
-                fflush(stdout);
 		rfc_value = atoi(s);
 
+		v = strtok(u,":");
+		v = strtok(NULL,":");
+		ll_flag = atoi(v);
+
+		//printf("In GetRFC, searching for %d\n", rfc_value);
 		//Look up the RFC-value in the rfc_db_head of the current server to get the file name corresponding to the RFC-value
 		
 		RFC_db_rec *hh;
-		hh = rfc_db_head;
-		filename[0] = '\0';
-		while(hh!=NULL){
-			if(hh -> value == rfc_value)
-			{
-				strcpy(filename, hh->RFC_title);
-				break;
-			}
+		if ( ll_flag == 1 )
+			hh = rfc_db_head;
+		else {
+			hh = new_head;
+			ll_flag = 0;
 		}
-		if(filename[0] == '\0')
-		{
-			printf("Fatal Error!!! Exiting!\n");
-			exit(1);
+		if ( hh ) {
+			do {
+				if(hh->value == rfc_value)
+				{
+					strcpy(filename, "");
+					strcpy(filename, hh->RFC_title);
+					break;
+				}
+				hh = hh->next;
+			} while ( hh != rfc_db_head );
 		}
-		
+
+		//printf("In GetRFC, about to send file %s\n", filename);
 		//open file with filename and send to ip_addr and portnum
                 fp = fopen(filename, "rb");
 
@@ -793,27 +984,72 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
                 printf("\n\n");
                 fflush(stdout);
 		//This guy's Job is done!
-		//Now, the requesting server (in sync_send() mode) will accept this file and return it to the requesting client	
-		
-			
-	
+		//Now, the requesting server (in sync_send() mode) will accept this file and return it to the requesting client
 	
 	}
-	else if(strcmp(msg_type, "ForwardResponse") == 0){ //Response to the original server after the lookup forwarding
-//		rfc_db_head = sort_RFC_db(rfc_db_head);
-		//Parse out the IP Addr, Port Num, Chord ID which this server received as response to the Forward (This is the originating server!)
-		/*TODO*///Put the logic to parse ip_addr , portnum and chord_id from the Forward message packet later here				
+	else if(strcmp(msg_type, "ForwardGet") == 0){ //Response to the original server after the lookup forwarding
 
+                char *w;
+                needle = strtok(msg, "\n");
+                needle = strtok(NULL, "\n");
+                q = strtok(NULL, "\n");
+                w = strtok(NULL, "\n");
+
+                p = strtok(needle, ":");
+                p = strtok(NULL, ":");
+                strcpy(ip_addr, p);
+
+                r = strtok(q, ":");
+                r = strtok(NULL, ":");
+                portnum = atoi(r);
+
+                s = strtok(w,":");
+                s = strtok(NULL,":");
+                fflush(stdout);
+                rfc_value = atoi(s);
+
+		printf("ForwardGet received! %d %d %d %d\n", peer_info.chord_id, peer_info.successor[0].chord_id, rfc_value, rfc_value%1024);
+		if ( is_in_between(peer_info.chord_id, peer_info.successor[0].chord_id, rfc_value%1024) ) {
+                        /* My Successor has the RFC. Reply back to the requesting peer the chord id of my successor */
+		        struct sockaddr_in fwd_sock_client;
+		        int fwd_sock, fwd_slen = sizeof(fwd_sock_client), fwd_ret;
+			char fwd_buf[BUFLEN] = "";
+			sprintf(fwd_buf, "%d:%s:%d:", peer_info.successor[0].chord_id, peer_info.successor[0].ip_addr, peer_info.successor[0].portnum);
+			printf("Sending %s\n", fwd_buf);
+
+		        fwd_sock = socket(AF_INET, SOCK_STREAM, 0);
+		        memset((char *) &fwd_sock_client, 0, sizeof(fwd_sock_client));
+
+		        fwd_sock_client.sin_family = AF_INET;
+		        fwd_sock_client.sin_port = htons(portnum);
+		        fwd_sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+		        fwd_ret = connect(fwd_sock, (struct sockaddr *) &fwd_sock_client, fwd_slen);
+		        if (fwd_ret == -1) {
+                		printf("Connect failed! Check the IP and port number of the Sever! \n");
+		                exit(-1);
+		        }
+
+		        if ( send(fwd_sock, fwd_buf, BUFLEN, 0) == -1 ) {
+		                printf("send failed ");
+		                exit(-1);
+		        }
+
+		        close(fwd_sock);
+        
+                } else {
+			/* Send ForwardGet to my successor. Put the ip_addr and portnum received in that message */
+			strcpy(sendbuf, "");
+			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, ip_addr, portnum, rfc_value);
+                        strcpy(msg_type, "ForwardGet");
+                        send_message(peer_info.successor[0].ip_addr, peer_info.successor[0].portnum, msg_type, sendbuf);
+			printf("ForwardGet Sent by Node %d to Node %d\n", peer_info.chord_id, peer_info.successor[0].chord_id);
+			fflush(stdout);
+		}
 
                 /* Build GetRFC message which will originate from the initial server to the server which guarantees that RFC is there */
 		//Populate variable 'rfc-value' somewhere
 		
-                sprintf(msg, "GET GetRFC %s\nIP:%s\nPort:%d\nRFC-Value:%d\n", PROTOCOL_STR, ip_addr, portnum, rfc_value);
-                strcpy(msg_type, "GetRFC");
-                strcpy(sendbuf, msg);
-                send_message(ip_addr, portnum, msg_type, sendbuf);
-                printf("%s Message sent from Peer with ChordID %d to the FINAL Peer  with ChordID %d\n", msg_type, peer_info.chord_id, chord_id);
-	
 	}
 
 }

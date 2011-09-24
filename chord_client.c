@@ -69,7 +69,7 @@ int main()
 	                exit(-1);
         	}
 
-		FILE *fp;// = fopen(rfc_title, "wb");// ??
+		FILE *fp = fopen(rfc_title, "wb");
 		char recvbuf[BUFLEN], *cp;
 		int bytes_read;
 
