@@ -17,9 +17,9 @@ char PRINTRFCDBMSG_STR[128] = "PrintRFCDb";
 #define BUFLEN 1500
 char buf[BUFLEN];
 
-void build_FetchRFC_msg(char *ip_addr, int portnum, char *rfc_title) 
+void build_FetchRFC_msg(char *ip_addr, int portnum, char *rfc_title, int rfc_value) 
 {
-	sprintf(buf, "GET %s %s %s\nIP:%s\nPort:%d\n", FETCHMSG_STR, rfc_title, PROTOCOL_STR, ip_addr, portnum);
+	sprintf(buf, "GET %s %s %d %s\nIP:%s\nPort:%d\n", FETCHMSG_STR, rfc_title, rfc_value, PROTOCOL_STR, ip_addr, portnum);
 }
 
 int main()
@@ -28,8 +28,8 @@ int main()
         struct sockaddr_in sock_client;
         int sock, slen = sizeof(sock_client), ret;
 
-	char ip_addr[128], rfc_value[128], msg_type[128];
-	int portnum;
+	char ip_addr[128], rfc_title[128], msg_type[128];
+	int portnum, rfc_value;
 
 	printf("Enter the IP Address of the Peer to connect to: ");
 	scanf("%s", ip_addr);
@@ -55,10 +55,13 @@ int main()
 
 	if ( strcmp(msg_type,"FetchRFC") == 0 ) {
 
-		printf("Enter the RFC Value of the RFC to be fetched: ");
-		scanf("%s", rfc_value);
-	
-		build_FetchRFC_msg(ip_addr, portnum, rfc_value);
+		printf("Enter the RFC Title of the RFC to be fetched: ");
+		scanf("%s", rfc_title);
+
+		printf("Enter the RFC value of the RFC to be fetched: ");
+		scanf("%d", &rfc_value);
+			
+		build_FetchRFC_msg(ip_addr, portnum, rfc_title, rfc_value);
 		printf("FetchRFC Msg:\n%s", buf);
 
         	if ( send(sock, buf, BUFLEN, 0) == -1 ) {

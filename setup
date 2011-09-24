@@ -1,0 +1,14 @@
+#!/bin/sh
+
+rm -fr ./p0/ ./p1/ ./p2/ ./p3/ ./p4/ ./p5/ ./p6/
+mkdir -p ./p0 ./p1 ./p2 ./p3 ./p4 ./p5 ./p6
+
+cp chord_peer ./p0/
+cp chord_peer ./p1/
+cp chord_peer ./p2/
+cp chord_peer ./p3/
+cp chord_peer ./p4/
+cp chord_peer ./p5/
+cp chord_peer ./p6/
+
+cp -af ./sample_RFCs/*.txt ./p0/

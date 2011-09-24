@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 		is_p0 = TRUE;
 		printf("\nNode P0 is starting up..... \n");
 
-	} else if ( argc == 3 /*&& (strcmp(argv[2], "5000")==0)*/ ) {
+	} else if ( argc == 3 && (strcmp(argv[2], "5000")==0) ) {
 
 		/* This is a Peer Node */
 		strcpy(ip,argv[1]);
