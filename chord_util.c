@@ -1050,6 +1050,24 @@ void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
                 /* Build GetRFC message which will originate from the initial server to the server which guarantees that RFC is there */
 		//Populate variable 'rfc-value' somewhere
 		
+	} else if (strcmp(msg_type, "PeerDetails") == 0) {
+
+		int i;
+		char tmpbuf[1500];
+		printf("In Get PeerDetails\n");
+		sprintf(sendbuf,"POST PeerDetais %s\n",PROTOCOL_STR);
+		for(i=0;i<MAX_NUM_OF_PEERS;i++)	{
+			if (peer_list[i].chord_id != -1){
+				sprintf(tmpbuf,"Chord_id:%d\nIP:%s\nPort:%d\n",peer_list[i].chord_id,peer_list[i].ip_addr,peer_list[i].portnum);
+				printf("Current Peer %d in the list is: %s", i, tmpbuf);
+				strcat(sendbuf,tmpbuf);
+			}
+		}
+		printf("Message to be sent is %s",sendbuf);
+		if ( send(client_sock, sendbuf, strlen(sendbuf), 0) < 0 ) {
+			printf("Error in sending file data! \n");
+			exit(-1);
+		}
 	}
 
 }
