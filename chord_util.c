@@ -233,6 +233,7 @@ printf("Enter generate_RFC_database \n");
 	int rndm;
 	struct timeval ct;
 	int i, rand_arr[50], k=0;
+//	FILE *fp = fopen()
 	RFC_db_rec *p, *q;
   
 	gettimeofday(&ct, NULL);
@@ -566,14 +567,25 @@ int get_rfc(char title[128], int value, char ip_addr[128], int portnum)
 			return (0);
 }
 
-void handle_messages(char msg_type[128], char msg[BUFLEN], int client_sock)
+void * handle_messages(void *args)
 {
-		
+	
+	
+	struct thread_args_t *thread_args = (struct thread_args_t *)args;
+
+	char msg_type[128],msg[BUFLEN];
+	int client_sock;
+	
+	
 	int bytes_read, portnum, chord_id, successor_id,rfc_value, key_val, val, send_RFC_reply=0;
 	char sendbuf[BUFLEN], *needle, ip_addr[128], *keyval;
 	char title[128]= "", filename[128];
 	char *p, *q, *r, *s, *t, *u, *v, *x, *xx, *y, *yy, *z, *zz;
 	FILE *fp;
+
+	client_sock = thread_args->client;
+	strcpy(msg_type,thread_args->msg_type);
+	strcpy(msg,thread_args->msg);
 
 	if (strcmp(msg_type, "FetchRFC") == 0) {
 
@@ -1212,7 +1224,9 @@ RFC_db_rec * find_keys_to_transfer(int lower_bound, int upper_bound)
 
 void server_listen()
 {
-
+	
+//	pthread_t thread_id;
+	
         struct sockaddr_in sock_client;
 	int client, slen = sizeof(sock_client), ret;
 	char msg_type[128], msg[BUFLEN], tmp[BUFLEN], *p;
@@ -1233,6 +1247,7 @@ void server_listen()
 			goto close;
 		}
 
+		pthread_t thread_id;
 		printf("\nReceived following Msg:\n%s", msg);
 		memcpy((char *)tmp, (char *)msg, strlen(msg));
 
@@ -1244,8 +1259,15 @@ void server_listen()
 		fflush(stdout);
 
 		/* The below func could possibly be in a pthread. */
-		handle_messages(msg_type, msg, client);
+	
+		args.client=client;
+		strcpy(args.msg_type,msg_type);
+		strcpy(args.msg,msg);
+	
+		pthread_create(&thread_id,NULL,handle_messages,(void *)&args);
+//		handle_messages(msg_type, msg, client);
 
+		pthread_join(thread_id,NULL);
 close:
 		close(client);
 	}

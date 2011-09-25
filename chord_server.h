@@ -51,6 +51,14 @@ typedef struct peer_info_t_ {
 	
 }peer_info_t;
 
+struct thread_args_t {
+
+        int client;
+        char msg_type[128];
+        char msg[60000];
+
+}args;
+
 extern char PROTOCOL_STR[128];
 extern int is_p0;
 extern int well_known_socket;
