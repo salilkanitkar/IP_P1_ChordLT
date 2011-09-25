@@ -78,6 +78,8 @@ int main(int argc, char *argv[])
 	    print_RFC_Database();
         #endif
 		
+		initialize_peer_info();
+
 		peer_info.chord_id = 0;
 
 		initialize_peer_list();
@@ -86,7 +88,6 @@ int main(int argc, char *argv[])
 		well_known_port = CHORD_PORT;
 		populate_port_num();
 
-		/*TODO:Instead of below code.. this should be a call to put_in_peer_list()*/
 		peer_info.successor[0].chord_id = 0;
 		strcpy(peer_info.successor[0].ip_addr, peer_info.ip_addr);
 		peer_info.successor[0].portnum = peer_info.portnum;
@@ -108,6 +109,8 @@ int main(int argc, char *argv[])
 		server_listen();
 
 	} else {
+
+		initialize_peer_info();
 
 		printf("P0s Parameters: %s \t  %d\n",ip,port);
 		populate_public_ip();

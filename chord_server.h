@@ -31,6 +31,11 @@ typedef struct peer_track_t_ {
 	char ip_addr[128];
 } peer_track_t;
 
+typedef struct peer_finger_t_ {
+	int finger_id;
+	peer_track_t finger_node;
+}peer_finger_t;
+
 typedef struct peer_info_t_ {
 
 	int chord_id;
@@ -39,8 +44,10 @@ typedef struct peer_info_t_ {
 	char ip_addr[128];
 
 	peer_track_t successor[2];
+
 	peer_track_t pred;
-	peer_track_t finger[3];
+
+	peer_finger_t finger[3];
 	
 }peer_info_t;
 
@@ -61,6 +68,7 @@ extern void generate_RFC_Database(int,int,char [][RFC_TITLE_LEN_MAX]);
 extern void sort_RFC_db();
 
 extern void print_RFC_Database();
+extern void initialize_peer_info();
 extern void initalize_peer_list();
 extern int next_free_position();
 extern int check_chordID(int);

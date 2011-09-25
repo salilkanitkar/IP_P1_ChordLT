@@ -5,7 +5,10 @@ Types of Messages -->
 1) FetchRFC
 2) RegisterNode
 3) NodeIdentity
-4) GetRFC
+4) GetKey
 5) NodeList
-6) PrintRFCDb
+6) GetRFC
+7) PrintRFCDb
+8) ForwardGet
+9) PeerDetails
 

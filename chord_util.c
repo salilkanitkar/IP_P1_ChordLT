@@ -24,6 +24,28 @@ int db_init = 0;
 RFC_db_rec *new_head=0;
 int ll_flag = 0;
 
+void initialize_peer_info()
+{
+	int i;
+
+	peer_info.chord_id = -1;
+	strcpy(peer_info.ip_addr, "");
+	peer_info.portnum = -1;
+	
+	for ( i=0 ; i<2 ; i++ ) {
+		peer_info.successor[i].chord_id = -1;
+		strcpy(peer_info.successor[i].ip_addr, "");
+		peer_info.successor[i].portnum = -1;
+	}
+
+	for ( i=0 ; i<3 ; i++ ) {
+		peer_info.finger[i].finger_id = -1;
+		peer_info.finger[i].finger_node.chord_id = -1;
+		strcpy(peer_info.finger[i].finger_node.ip_addr, "");
+		peer_info.finger[i].finger_node.portnum = -1;
+	}
+}
+
 void print_details(peer_info_t p_info)
 {
 	printf("Chord_Id:%d IP:%s Port:%d Successor:%d %s %d Pred:%d %s %d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor[0].chord_id, p_info.successor[0].ip_addr, p_info.successor[0].portnum, p_info.pred.chord_id, p_info.pred.ip_addr, p_info.pred.portnum);
@@ -113,7 +135,6 @@ void initialize_peer_list()
 		peer_list[i].chord_id = -1;
 		peer_list[i].successor[0].chord_id = peer_list[i].successor[1].chord_id = -1;
 		peer_list[i].pred.chord_id = -1;
-		peer_list[i].finger[0].chord_id = peer_list[i].finger[1].chord_id = peer_list[i].finger[2].chord_id = -1;
 		
 		peer_list[i].portnum = -1;
 		strcpy(peer_list[i].iface_name,"\0");
@@ -122,13 +143,9 @@ void initialize_peer_list()
 		strcpy(peer_list[i].successor[0].ip_addr,"\0");
 		strcpy(peer_list[i].successor[1].ip_addr,"\0");
 		strcpy(peer_list[i].pred.ip_addr,"\0");
-		strcpy(peer_list[i].finger[0].ip_addr,"\0");
-		strcpy(peer_list[i].finger[1].ip_addr,"\0");
-		strcpy(peer_list[i].finger[2].ip_addr,"\0");
 
 		peer_list[i].successor[0].portnum = peer_list[i].successor[1].portnum = -1;
 		peer_list[i].pred.portnum = -1;
-		peer_list[i].finger[0].portnum = peer_list[i].finger[1].portnum = peer_list[i].finger[2].portnum = -1;
 	}
 }
 
