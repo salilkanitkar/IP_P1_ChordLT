@@ -612,7 +612,11 @@ void fix_fingers_P0()
                 }
 
         }
-	
+
+	peer_info.successor[1].chord_id = peer_info.finger[1].finger_node.chord_id;
+	strcpy(peer_info.successor[1].ip_addr, peer_info.finger[1].finger_node.ip_addr);
+	peer_info.successor[1].portnum = peer_info.finger[1].finger_node.portnum;
+		
 }
 
 
@@ -646,7 +650,12 @@ void fix_fingers()
                         peer_info.finger[i].finger_node.portnum = t.portnum;
 		}
 		
-	}	
+	}
+
+	peer_info.successor[1].chord_id = peer_info.finger[1].finger_node.chord_id;
+	strcpy(peer_info.successor[1].ip_addr, peer_info.finger[1].finger_node.ip_addr);
+	peer_info.successor[1].portnum = peer_info.finger[1].finger_node.portnum;
+
 }
 
 void * handle_messages(void *args)

@@ -18,7 +18,6 @@ rfc_list=`ls ./sample_RFCs/`
 j=0
 
 for i  in $rfc_list; do
-	echo $i
 	src_file_name="./sample_RFCs/$i"
 	dest_file_name="$j$i"
 	/bin/cp  $src_file_name ./p0/$dest_file_name
