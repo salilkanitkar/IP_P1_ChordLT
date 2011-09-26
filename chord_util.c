@@ -677,7 +677,7 @@ void * handle_messages(void *args)
 		print_details(peer_info);
 		printf("\n\nSENT NODEIDENTITY\n");
 
-		sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred.chord_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, chord_id, t.successor[0].chord_id, t.successor[0].ip_addr, t.successor[0].portnum, t.pred.chord_id, t.pred.ip_addr, t.pred.portnum);
+		sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, chord_id, t.successor[0].chord_id, t.successor[0].ip_addr, t.successor[0].portnum, t.pred.chord_id, t.pred.ip_addr, t.pred.portnum);
 		strcpy(msg_type, "NodeIdentity");
 		send_message(ip_addr, portnum, msg_type, sendbuf);
 

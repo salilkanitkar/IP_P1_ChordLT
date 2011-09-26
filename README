@@ -1,14 +1,66 @@
 sskanitk
 sssane
 
-Types of Messages -->
+Message Types and formats -->
 1) FetchRFC
-2) RegisterNode
-3) NodeIdentity
-4) GetKey
-5) NodeList
-6) GetRFC
-7) PrintRFCDb
-8) ForwardGet
-9) PeerDetails
+GET FetchRFC <RFC_TITLE> <RFC_Value> Chord-LT/1.0
+IP: <IP_Addr>
+Port:<Port_num>
 
+2) RegisterNode
+GET RegisterNode Chord-LT/1.0
+IP:<IP_Addr_P0>
+Port:<Port_num_P0>
+
+3) NodeIdentity
+#This message format may change. Do we need to add some more fields
+POST NodeIdentity Chord-LT/1.0
+chord_id:<chord_id> 
+successor_id:<chord_id of successor>
+pred_id:<chord_id of predecessor>
+successor_IP:<IP_Addr of successor>
+successor_Port:<Port_num of successor>
+pred_IP:<IP_Addr of predecessor>
+pred_Port:<Port_num of predecessor>
+
+4) GetKey
+GET Getkey Chord-LT/1.0
+IP:<IP_Addr>
+Port:<Port_num>
+Chord-Id:<chord_id>
+
+5) NodeList
+POST NodeList Chord-LT/1.0
+IP: <IP_Addr>
+Port:<Port_num>
+count:<count of RFCs to be sent to this node>
+<RFC1_key>:<RFC1_value>:<RFC1_title>
+<RFC2_key>:<RFC2_value>:<RFC2_title>
+.
+.
+.
+.
+.
+<RFCn_key>:<RFCn_value>:<RFCn_title>
+
+6) GetRFC
+GET GetRFC Chord-LT/1.0
+IP: <IP_Addr>
+Port:<Port_num>
+RFC-Value:<RFC_value>
+Flag:0
+
+7) PrintRFCDb
+GET PrintRFCDb Chord-LT/1.0
+
+8) ForwardGet
+GET ForwardGet Chord-LT/1.0
+IP: <IP_Addr>
+Port:<Port_num>
+RFC-Value:<RFC_value>
+
+
+9) PeerDetails
+GET PeerDetails Chord-LT/1.0
+IP:<IP_Addr>
+Port:<Port_num>
