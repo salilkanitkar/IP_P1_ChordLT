@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#include <sys/time.h>
+
 #include"chord_client.h"
 char PROTOCOL_STR[128] = "Chord-LT/1.0";
 
@@ -90,6 +92,7 @@ int main()
 	char recvbuf[BUFLEN];
 	int bytes_read;
 
+	struct timeval p,q;
 	
 	printf("\n=================== Chord Client ======================= \n");
 
@@ -135,6 +138,8 @@ int main()
 			build_FetchRFC_msg(ip_addr, portnum, rfc_title, rfc_value);
 			printf("FetchRFC Msg:\n%s", buf);
 
+	                gettimeofday(&p, NULL);
+
 	        	if ( send(sock, buf, BUFLEN, 0) == -1 ) {
         	        	printf("send failed ");
 	        	        exit(-1);
@@ -158,6 +163,11 @@ int main()
 			fclose(fp);
 
 			close(sock);
+
+	                gettimeofday(&q, NULL);
+
+        	        printf("The latency for the Lookup operation in Microseconds is: %8ld\n\n", q.tv_usec - p.tv_usec + (q.tv_sec-p.tv_sec)*1000000);
+
 
 		} else if ( strcmp(msg_type, "PrintRFCDb") == 0 ) {
 

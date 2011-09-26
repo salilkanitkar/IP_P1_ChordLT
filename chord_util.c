@@ -228,7 +228,7 @@ int generate_ChordID(int start, int end)
 	return rndm;
 }
 
-int check_rand_arr(int rndm, int rand_arr[50], int k)
+int check_rand_arr(int rndm, int rand_arr[RFC_NUM_MAX], int k)
 {
 	int i;
 	for(i=0;i<k;i++) {
@@ -247,7 +247,7 @@ printf("Enter generate_RFC_database \n");
 	long int seed;
 	int rndm;
 	struct timeval ct;
-	int i, rand_arr[50], k=0;
+	int i, rand_arr[RFC_NUM_MAX], k=0;
 //	FILE *fp = fopen()
 	RFC_db_rec *p, *q;
   
@@ -255,7 +255,7 @@ printf("Enter generate_RFC_database \n");
         seed = (ct.tv_sec +ct.tv_usec);
         srand(seed);
 
-	for(i=0; i<50; i++){
+	for(i=0; i<RFC_NUM_MAX; i++){
 
 		/* TODO: Make sure that same random number is not generated again. */
 		do {
@@ -1441,7 +1441,7 @@ RFC_db_rec * find_keys_to_transfer(int lower_bound, int upper_bound)
 		}
 		tmp = tmp->next;
 		i += 1;
-	} while ( i<50 );
+	} while ( i<RFC_NUM_MAX );
 	
 	
 	#ifdef DEBUG_FLAG
