@@ -1,6 +1,23 @@
 sskanitk
 sssane
 
+Chord Peer <-> Peer Messages
+
+1) RegisterNode
+2) NodeIdentity
+3) FixFingers
+4) GetDb
+5) GetKey
+6) NodeList
+7) GetRFC
+8) ForwardGet
+9) GetFinger
+
+Chord Peer <-> Client Messages ->
+1) PrintRFCDb
+2) PeerDetails
+3) FetchRFC
+
 Message Types and formats -->
 1) FetchRFC
 GET FetchRFC <RFC_TITLE> <RFC_Value> Chord-LT/1.0

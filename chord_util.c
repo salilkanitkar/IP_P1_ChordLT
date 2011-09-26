@@ -24,6 +24,10 @@ int db_init = 0;
 RFC_db_rec *new_head=0;
 int ll_flag = 0;
 
+peer_info_t fixfingersarr[MAX_NUM_OF_PEERS];
+
+int sync_send_message(char ip_addr[128], int portnum, char msg_type[128], char msg[BUFLEN]);
+
 void initialize_peer_info()
 {
 	int i;
@@ -50,6 +54,17 @@ void print_details(peer_info_t p_info)
 {
 	printf("Chord_Id:%d IP:%s Port:%d Successor:%d %s %d Pred:%d %s %d\n", p_info.chord_id, p_info.ip_addr, p_info.portnum, p_info.successor[0].chord_id, p_info.successor[0].ip_addr, p_info.successor[0].portnum, p_info.pred.chord_id, p_info.pred.ip_addr, p_info.pred.portnum);
 	fflush(stdout);
+}
+
+
+void print_finger_table(peer_info_t p_info)
+{
+	int i=0;
+	printf("\nThe Finger Table At Node %d\n", p_info.chord_id);
+	for ( i=0 ; i<3 ; i++ ) {
+		printf("Finger %d) Start:%d Successor:%d\n", i+1, p_info.finger[i].finger_id, p_info.finger[i].finger_node.chord_id);
+	}
+        fflush(stdout);
 }
 
 void print_RFC_Database ()
@@ -567,6 +582,73 @@ int get_rfc(char title[128], int value, char ip_addr[128], int portnum)
 			return (0);
 }
 
+void fix_fingers_P0()
+{
+        int i, start, succ, p;
+
+        for ( i=0 ; i<3 ; i++ ) {
+                p = ( 1 << i );
+                start = peer_info.chord_id + p;
+                peer_info.finger[i].finger_id = start;
+                if ( is_in_between(peer_info.chord_id, peer_info.successor[0].chord_id, start) ) {
+                        peer_info.finger[i].finger_node.chord_id = peer_info.successor[0].chord_id;
+                        strcpy(peer_info.finger[i].finger_node.ip_addr, peer_info.successor[0].ip_addr);
+                        peer_info.finger[i].finger_node.portnum = peer_info.successor[0].portnum;
+                } else {
+			int j;
+			for (j=0;j<MAX_NUM_OF_PEERS;j++) {
+				if ( peer_list[j].chord_id == peer_info.successor[0].chord_id ) {
+					if ( peer_list[j+1].chord_id == -1 ) {
+		 	                	peer_info.finger[i].finger_node.chord_id = peer_list[0].chord_id;
+                        			strcpy(peer_info.finger[i].finger_node.ip_addr, peer_list[0].ip_addr);
+			                        peer_info.finger[i].finger_node.portnum = peer_list[0].portnum;
+					} else {
+		 	                	peer_info.finger[i].finger_node.chord_id = peer_list[j+1].chord_id;
+                        			strcpy(peer_info.finger[i].finger_node.ip_addr, peer_list[j+1].ip_addr);
+			                        peer_info.finger[i].finger_node.portnum = peer_list[j+1].portnum;
+					}
+				}
+			}
+                }
+
+        }
+	
+}
+
+
+void fix_fingers()
+{
+	int i, start, succ, p;
+	char sendbuf[BUFLEN], msg_type[128];
+	
+	for ( i=0 ; i<3 ; i++ ) {
+		p = ( 1 << i );
+		start = peer_info.chord_id + p;
+		peer_info.finger[i].finger_id = start;
+		if ( is_in_between(peer_info.chord_id, peer_info.successor[0].chord_id, start) ) {
+			peer_info.finger[i].finger_node.chord_id = peer_info.successor[0].chord_id;
+			strcpy(peer_info.finger[i].finger_node.ip_addr, peer_info.successor[0].ip_addr);
+			peer_info.finger[i].finger_node.portnum = peer_info.successor[0].portnum;
+		} else {
+			/* Send GetFinger to my successor. */
+	                printf("Forwards are required to get %d Finger \n", i);
+                        rand_sock = 0;
+                        rand_portnum = 0;
+                        populate_random_port_num();
+                        sprintf(sendbuf, "GET GetFinger %s\nIP:%s\nPortnum:%d\nFinger-val:%d\n", PROTOCOL_STR, peer_info.ip_addr, rand_portnum, start);
+                        strcpy(msg_type, "GetFinger");
+                        send_message(peer_info.successor[0].ip_addr, peer_info.successor[0].portnum, msg_type, sendbuf);
+                        peer_info_t t;
+                        t = listen_on_random_port();
+                        printf("The Requested finger is %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+                        peer_info.finger[i].finger_node.chord_id = t.chord_id;
+                        strcpy(peer_info.finger[i].finger_node.ip_addr, t.ip_addr);
+                        peer_info.finger[i].finger_node.portnum = t.portnum;
+		}
+		
+	}	
+}
+
 void * handle_messages(void *args)
 {
 	
@@ -589,6 +671,7 @@ void * handle_messages(void *args)
 
 	if (strcmp(msg_type, "FetchRFC") == 0) {
 
+
 		needle = strtok(msg, " ");
 		needle = strtok(NULL, " ");
 		needle = strtok(NULL, " ");
@@ -598,18 +681,51 @@ void * handle_messages(void *args)
 		strcpy(title, needle);
 		printf("\nThe RFC requested is: Key:%d Value %d Title: %s\n", key_val, val, title);
 
+		peer_info_t sendt;
 		if ( peer_info.chord_id == peer_info.pred.chord_id && peer_info.chord_id == peer_info.successor[0].chord_id ) {
 			printf("Edge Case!\n");
 			send_RFC_reply = 1;
+
 		}
 		else if ( is_in_between(peer_info.pred.chord_id, peer_info.chord_id, key_val) ) {
 			/* This means that I have the RFC */
 			send_RFC_reply = 1;
+
 		} else if ( is_in_between(peer_info.chord_id, peer_info.successor[0].chord_id, key_val) ) {
 			/* My Successor has the RFC. Send GetRFC to him to get the RFC body. */
 			get_rfc(title, val, peer_info.successor[0].ip_addr, peer_info.successor[0].portnum);
 			send_RFC_reply = 1;
-		} else {
+
+		} else if ( peer_info.finger[1].finger_node.chord_id != peer_info.successor[0].chord_id && is_in_between(peer_info.finger[0].finger_node.chord_id, peer_info.finger[1].finger_node.chord_id, key_val) ) {
+			printf("Forwards are required to fetch this RFC!!! \n");
+			rand_sock = 0;
+			rand_portnum = 0; 
+			populate_random_port_num();
+			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, peer_info.ip_addr, rand_portnum, val);
+        	        strcpy(msg_type, "ForwardGet");
+                	send_message(peer_info.finger[1].finger_node.ip_addr, peer_info.finger[1].finger_node.portnum, msg_type, sendbuf);
+			peer_info_t t;
+			t = listen_on_random_port();
+			printf("The Requested RFC is at Node %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+			get_rfc(title, val, t.ip_addr, t.portnum);
+			send_RFC_reply = 1;
+
+		} else if ( peer_info.finger[2].finger_node.chord_id != peer_info.successor[0].chord_id && is_in_between(peer_info.finger[1].finger_node.chord_id, peer_info.finger[2].finger_node.chord_id, key_val) ) {
+			printf("Forwards are required to fetch this RFC!!! \n");
+			rand_sock = 0;
+			rand_portnum = 0; 
+			populate_random_port_num();
+			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, peer_info.ip_addr, rand_portnum, val);
+        	        strcpy(msg_type, "ForwardGet");
+                	send_message(peer_info.finger[2].finger_node.ip_addr, peer_info.finger[2].finger_node.portnum, msg_type, sendbuf);
+			peer_info_t t;
+			t = listen_on_random_port();
+			printf("The Requested RFC is at Node %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+			get_rfc(title, val, t.ip_addr, t.portnum);
+			send_RFC_reply = 1;			
+		}
+
+		else {
 			printf("Forwards are required to fetch this RFC!!! \n");
 			rand_sock = 0;
 			rand_portnum = 0; 
@@ -647,7 +763,9 @@ void * handle_messages(void *args)
 		printf("\n\n");
 		fflush(stdout);
 
+
 	} else if (strcmp(msg_type, "RegisterNode") == 0) {
+
 
 		/* Only P0 can receive RegisterNode */
 		needle = strtok(msg, "\n");
@@ -675,11 +793,51 @@ void * handle_messages(void *args)
 		print_peer_list();
 		printf("\n\n");
 		print_details(peer_info);
+
+	        printf("Calling fix_fingers at P0... \n");
+        	fix_fingers_P0(); /* This does not involve any */
+	        print_finger_table(peer_info);
+
 		printf("\n\nSENT NODEIDENTITY\n");
 
 		sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, chord_id, t.successor[0].chord_id, t.successor[0].ip_addr, t.successor[0].portnum, t.pred.chord_id, t.pred.ip_addr, t.pred.portnum);
 		strcpy(msg_type, "NodeIdentity");
 		send_message(ip_addr, portnum, msg_type, sendbuf);
+
+		int i, ret;
+		for ( i=0;i<MAX_NUM_OF_PEERS;i++) {
+
+			if ( fixfingersarr[i].chord_id != -1 ) {
+
+	                        printf("2) Send FixFingers msg to Node %d\n", fixfingersarr[i].chord_id);
+				strcpy(sendbuf, "");
+                	        sprintf(sendbuf, "POST FixFingers %s\n", PROTOCOL_STR);
+                        	strcpy(msg_type, "FixFingers");
+	                        ret = sync_send_message(fixfingersarr[i].ip_addr, fixfingersarr[i].portnum, msg_type, sendbuf);
+			} else 
+				break;
+			
+		}
+
+		strcpy(sendbuf, "");
+                sprintf(sendbuf, "POST FixFingers %s\n", PROTOCOL_STR);
+                strcpy(msg_type, "FixFingers");
+                ret = sync_send_message(ip_addr, portnum, msg_type, sendbuf);
+
+		for ( i=0;i<MAX_NUM_OF_PEERS;i++) {
+			if ( fixfingersarr[i].chord_id != -1 ) {
+                                printf("3) Send GetDb msg to Node %d\n", fixfingersarr[i].chord_id);
+                                strcpy(sendbuf, "");
+                                sprintf(sendbuf, "GET GetDb %s\n", PROTOCOL_STR);
+                                strcpy(msg_type, "GetDb");
+                                send_message(fixfingersarr[i].ip_addr, fixfingersarr[i].portnum, msg_type, sendbuf);
+			}
+		}
+
+                strcpy(sendbuf, "");
+                sprintf(sendbuf, "GET GetDb %s\n", PROTOCOL_STR);
+                strcpy(msg_type, "GetDb");
+                send_message(ip_addr, portnum, msg_type, sendbuf);
 
 	} else if (strcmp(msg_type, "NodeIdentity") == 0) {
 
@@ -724,6 +882,14 @@ void * handle_messages(void *args)
 		printf("\n\nReceived the NodeIdentity Message from P0\n");
 		print_details(peer_info);
 		printf("\n\n");
+
+	} else if ( strcmp(msg_type, "FixFingers") == 0) {
+                printf("Calling fix_fingers at Node %d... \n", peer_info.chord_id);
+                fix_fingers(); 
+                print_finger_table(peer_info);
+		send(client_sock, "FixFingers", 11, 0);
+
+	} else if ( strcmp(msg_type, "GetDb") == 0 ) { 
 
 		if ( !db_init ) {
 			/* Build GetKey to be sent to Successor of current peer_info */
@@ -938,6 +1104,7 @@ void * handle_messages(void *args)
 		printf("RFC Db LL created! \n");
 		print_details(peer_info);
 
+
 	} else if ( strcmp(msg_type, "PrintRFCDb")==0 ) {
 
 	        printf("The RFC db at this node \n");
@@ -1097,6 +1264,67 @@ void * handle_messages(void *args)
 			printf("Error in sending file data! \n");
 			exit(-1);
 		}
+	} else if(strcmp(msg_type, "GetFinger") == 0){ //Response to the original server after the lookup forwarding
+
+		int start;
+                char *w;
+                needle = strtok(msg, "\n");
+                needle = strtok(NULL, "\n");
+                q = strtok(NULL, "\n");
+                w = strtok(NULL, "\n");
+
+                p = strtok(needle, ":");
+                p = strtok(NULL, ":");
+                strcpy(ip_addr, p);
+
+                r = strtok(q, ":");
+                r = strtok(NULL, ":");
+                portnum = atoi(r);
+
+                s = strtok(w,":");
+                s = strtok(NULL,":");
+                fflush(stdout);
+                start = atoi(s);
+
+		printf("GetFinger received! %d %d %d\n", peer_info.chord_id, peer_info.successor[0].chord_id, start);
+		if ( is_in_between(peer_info.chord_id, peer_info.successor[0].chord_id, start) ) {
+                        /* My Successor has the RFC. Reply back to the requesting peer the chord id of my successor */
+		        struct sockaddr_in fwd_sock_client;
+		        int fwd_sock, fwd_slen = sizeof(fwd_sock_client), fwd_ret;
+			char fwd_buf[BUFLEN] = "";
+			sprintf(fwd_buf, "%d:%s:%d:", peer_info.successor[0].chord_id, peer_info.successor[0].ip_addr, peer_info.successor[0].portnum);
+			printf("Sending %s\n", fwd_buf);
+
+		        fwd_sock = socket(AF_INET, SOCK_STREAM, 0);
+		        memset((char *) &fwd_sock_client, 0, sizeof(fwd_sock_client));
+
+		        fwd_sock_client.sin_family = AF_INET;
+		        fwd_sock_client.sin_port = htons(portnum);
+		        fwd_sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+		        fwd_ret = connect(fwd_sock, (struct sockaddr *) &fwd_sock_client, fwd_slen);
+		        if (fwd_ret == -1) {
+                		printf("Connect failed! Check the IP and port number of the Sever! \n");
+		                exit(-1);
+		        }
+
+		        if ( send(fwd_sock, fwd_buf, BUFLEN, 0) == -1 ) {
+		                printf("send failed ");
+		                exit(-1);
+		        }
+
+		        close(fwd_sock);
+        
+                } else {
+			/* Send GetFinger to my successor. Put the ip_addr and portnum received in that message */
+			strcpy(sendbuf, "");
+			sprintf(sendbuf, "GET GetFinger %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, ip_addr, portnum, start);
+                        strcpy(msg_type, "GetFinger");
+                        send_message(peer_info.successor[0].ip_addr, peer_info.successor[0].portnum, msg_type, sendbuf);
+			printf("GetFinger Sent by Node %d to Node %d\n", peer_info.chord_id, peer_info.successor[0].chord_id);
+			fflush(stdout);
+		}
+
 	}
 
 }
@@ -1231,6 +1459,12 @@ void server_listen()
 	int client, slen = sizeof(sock_client), ret;
 	char msg_type[128], msg[BUFLEN], tmp[BUFLEN], *p;
 
+	if ( peer_info.chord_id == 0 ) {
+        	printf("Calling fix_fingers at P0... \n");
+	        fix_fingers_P0(); /* This does not involve any */
+        	print_finger_table(peer_info);
+	}
+
 	while (1) {
 
 		if ((client = accept(well_known_socket, (struct sockaddr *) &sock_client, &slen)) == -1) {
@@ -1327,6 +1561,40 @@ void send_message(char ip_addr[128], int portnum, char msg_type[128], char msg[B
 
 }
 
+int sync_send_message(char ip_addr[128], int portnum, char msg_type[128], char msg[BUFLEN])
+{
+
+        struct sockaddr_in sock_client;
+        int sock, slen = sizeof(sock_client), ret;
+
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        memset((char *) &sock_client, 0, sizeof(sock_client));
+
+        sock_client.sin_family = AF_INET;
+        sock_client.sin_port = htons(portnum);
+        sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+        ret = connect(sock, (struct sockaddr *) &sock_client, slen);
+        if (ret == -1) {
+                printf("Connect failed! Check the IP and port number of the Sever! \n");
+                exit(-1);
+        }
+
+        if ( send(sock, msg, BUFLEN, 0) == -1 ) {
+                printf("send failed ");
+                exit(-1);
+        }
+
+	if ( recv(sock, msg, 11, 0) == -1 ) {
+		printf("recv failed ");
+		exit(-1);
+	}
+
+	close(sock);
+
+	return 0;
+
+}
 int check_if_exists(int fwd_msg[32], int k, int s)
 {
 	int i;
@@ -1337,7 +1605,6 @@ int check_if_exists(int fwd_msg[32], int k, int s)
 	return 1;
 }
 
-/*TODO: Code to find next successor*/
 peer_info_t setup_successor(int chord_id)
 {
 
@@ -1349,6 +1616,10 @@ peer_info_t setup_successor(int chord_id)
 			break;
 	}
 	n = i-1;
+
+	for ( i=0;i<MAX_NUM_OF_PEERS;i++) {
+		fixfingersarr[i].chord_id = -1;
+	}
 
 	for (i=0 ; i<MAX_NUM_OF_PEERS ; i++) {
 		if ( peer_list[i].chord_id == chord_id ) {
@@ -1473,9 +1744,13 @@ peer_info_t setup_successor(int chord_id)
 		}
 	}
 
-
 	for (n=0;n<k;n++) {
 		i = fwd_msg[n];
+	
+		fixfingersarr[n].chord_id = peer_list[i].chord_id;
+		strcpy(fixfingersarr[n].ip_addr, peer_list[i].ip_addr);
+		fixfingersarr[n].portnum = peer_list[i].portnum;
+
 		if ( peer_list[i].chord_id != 0 ) {
 			printf("1) Send NodeIdentiy msg to Node %d\n", peer_list[i].chord_id);
         	        sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred.chord_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, peer_list[i].chord_id, peer_list[i].successor[0].chord_id, peer_list[i].successor[0].ip_addr, peer_list[i].successor[0].portnum, peer_list[i].pred.chord_id, peer_list[i].pred.ip_addr, peer_list[i].pred.portnum);
@@ -1483,6 +1758,7 @@ peer_info_t setup_successor(int chord_id)
 	                send_message(peer_list[i].ip_addr, peer_list[i].portnum, msg_type, sendbuf);
 		}
 	}
+
 
 	return t;
 
