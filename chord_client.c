@@ -17,7 +17,7 @@ char PROTOCOL_STR[128] = "Chord-LT/1.0";
 char FETCHMSG_STR[128] = "FetchRFC";
 char PRINTRFCDBMSG_STR[128] = "PrintRFCDb";
 char PEERDETAILSMSG_STR[128] = "PeerDetails";
-
+char PEEREXIT_STR[128] = "PeerExit";
 char buf[BUFLEN];
 peer_track_t peer_list[10];
 
@@ -28,6 +28,10 @@ void build_FetchRFC_msg(char *ip_addr, int portnum, char *rfc_title, int rfc_val
 void build_PeerDetails_msg(char *ip_addr, int portnum) 
 {
 	sprintf(buf, "GET %s %s\nIP:%s\nPort:%d\n", PEERDETAILSMSG_STR, PROTOCOL_STR, ip_addr, portnum);
+}
+void build_PeerExit_msg(char *ip_addr, int portnum) 
+{
+	sprintf(buf, "GET %s %s\nIP:%s\nPort:%d\n", PEEREXIT_STR, PROTOCOL_STR, ip_addr, portnum);
 }
 
 void set_peer_list(char* msg)
@@ -97,7 +101,7 @@ int main()
 	printf("\n=================== Chord Client ======================= \n");
 
 	while (1) {
-		printf("\nAvailable Tpes of Messages\nFetchRFC, PrintRFCDb, PeerDetails\n\n");
+		printf("\nAvailable Tpes of Messages\nFetchRFC, PrintRFCDb, PeerDetails, PeerExit\n\n");
 		printf("Enter \"End\" to Exit from Chord Client\n\n");
 
 		printf("Enter the Type of the Message: ");
@@ -239,7 +243,36 @@ int main()
 			print_peer_list();
 			close(sock);
 		}
+		else if ( strcmp(msg_type,"PeerExit") == 0 ) {
 
+			printf("Enter the IP Address of the Peer leaving the System: ");
+			scanf("%s", ip_addr);
+
+			printf("Enter the Port of the above Peer leaving the system: ");
+			scanf("%d", &portnum);
+
+			sock = socket(AF_INET, SOCK_STREAM, 0);
+			memset((char *) &sock_client, 0, sizeof(sock_client));
+
+			sock_client.sin_family = AF_INET;
+			sock_client.sin_port = htons(portnum);
+			sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+			ret = connect(sock, (struct sockaddr *) &sock_client, slen);
+			if (ret == -1) {
+				printf("Connect failed! Check the IP and port number of the Sever! \n");
+				exit(-1);
+			}
+
+			build_PeerExit_msg(ip_addr, portnum);
+			printf("PeerExit Msg:\n%s", buf);
+
+		       	if ( send(sock, buf, BUFLEN, 0) == -1 ) {
+        		    	printf("send failed ");
+                		exit(-1);
+			}
+			close(sock);
+		}
 	}
 
 	return(0);

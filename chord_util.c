@@ -1114,12 +1114,222 @@ void * handle_messages(void *args)
 		print_details(peer_info);
 
 
+	} else if(strcmp(msg_type, "AddNodeList")==0) {
+
+		int count, cnt=0, key, value, k=0, m, portnum;
+		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500], ip_addr[128];
+		RFC_db_rec *node_p, *node_q, *old_head;
+
+		strcpy(dbbuf, msg);
+
+                needle = strtok(msg, "\n");
+                needle = strtok(NULL, "\n");
+                y = strtok(NULL, "\n");
+		z = strtok(NULL, "\n");
+
+		xx = strtok(needle, ":");
+		xx = strtok(NULL, ":");
+		strcpy(ip_addr, xx);
+
+		yy = strtok(y, ":");
+		yy = strtok(NULL, ":");
+		portnum = atoi(yy);
+
+                p = strtok(z, ":");
+                p = strtok(NULL, ":");
+                count = atoi(p);
+		
+		w = strtok(dbbuf, "\n");
+		w = strtok(NULL, "\n");
+		w = strtok(NULL, "\n");
+		w = strtok(NULL, "\n");
+
+		if ( count == 0 ) {
+			printf("The RFC Database at this Node is Empty!! \n");
+			return;
+		}
+		
+		if(rfc_db_head != NULL){
+			node_q = rfc_db_head;
+			while(node_q -> next != rfc_db_head)
+				node_q = node_q -> next;
+		}
+		old_head = rfc_db_head;
+		while ( cnt<count ) {
+
+			w = strtok(NULL, "\n");
+			strcpy(t2, w);
+			k=0;m=0;
+			while( t2[m] != ':' ) {
+				t1[k] = t2[m];
+				k++;m++;
+			}
+			t1[k] = '\0';
+			key = atoi(t1);
+                        k=0;m++;
+                        while( t2[m] != ':' ) {
+                                t1[k] = t2[m];
+                                k++; m++;
+                        }
+                        t1[k] = '\0';
+			value = atoi(t1);
+
+                        k=0;m++;
+                        while( t2[m] != '\0' ) {
+                                t1[k] = t2[m];
+                                k++;m++;
+                        }
+                        t1[k] = '\0';
+			strcpy(title, t1);
+
+			node_p = (RFC_db_rec *)malloc(sizeof(RFC_db_rec));
+	                if (!node_p) {
+        	                printf("Error while allocating memory!!\n");
+                	        exit(-1);
+	                }
+        	        node_p->next = NULL;
+                	node_p->key = key;
+	                node_p->value = value;
+        	        strcpy(node_p->RFC_title, title);
+
+	                if ( rfc_db_head == NULL) {
+        	                rfc_db_head = node_p;
+                	        node_q = node_p;
+				rfc_db_head -> next = node_p;
+	                } else {
+				node_p->next = node_q->next;
+        	                node_q->next = node_p;
+				node_q = node_p;
+	                }
+			if(cnt == 0)
+				rfc_db_head = node_p;
+			cnt++;
+
+		}
+
+		printf("Request for the actual RFC Files..... \n");
+
+		int ret;
+		node_p = rfc_db_head;
+
+		do {
+
+			printf("Fetching RFC with key: %d\n", node_p->key);
+			ret = get_rfc(node_p->RFC_title, node_p->value, ip_addr, portnum);
+
+		#ifdef DEBUG_FLAG
+			printf("Starting Next Fetch\n");
+		#endif
+
+			node_p = node_p->next;
+
+
+		} while (node_p != old_head);
+
+
+		printf("RFC Db LL created! \n");
+		print_details(peer_info);
+		
+		/*create a RemoveNode Message for the predecessor of this node and send to P0*/
+		/*QUESTION:Do we have details of P0 at this point??*/
+
+		//Some code here
+
+		/*We need to write a code above which will save IP address and port number of P0 in ip_addr and portnum*/
+		
+               	sprintf(sendbuf, "GET RemoveNode %s\nChord id:%d\nIP:%s\nPortnum:%d", PROTOCOL_STR, peer_info.pred.chord_id, peer_info.pred.ip_addr, peer_info.pred.portnum);
+         	strcpy(msg_type, "RemoveNode");
+
+//              send_message(ip_addr, portnum, msg_type, sendbuf); Line commented since ip_addr and portnum is not setup
+
+		printf("RemoveNode Message sent to P0 is\n %s \n", sendbuf);
+		
+	} else if (strcmp(msg_type,"RemoveNode")==0) {
+				
+		peer_info_t suc,pred;
+		int pred_id,suc_id;
+		int i,j;
+	
+                needle = strtok(msg, "\n");
+                needle = strtok(NULL, "\n");
+                y = strtok(NULL, "\n");
+		z = strtok(NULL, "\n");
+		
+                p = strtok(needle, ":");
+                p = strtok(NULL, ":");
+                chord_id = atoi(p);
+		
+		xx = strtok(y, ":");
+		xx = strtok(NULL, ":");
+		strcpy(ip_addr, xx);
+
+		yy = strtok(z, ":");
+		yy = strtok(NULL, ":");
+		portnum = atoi(yy);
+
+		for(i=0;i<MAX_NUM_OF_PEERS;i++){
+			if(chord_id == peer_list[i].chord_id){
+				pred_id = i-1;
+				if(peer_list[i+1].chord_id == -1)
+					suc_id = 0;
+				else
+					suc_id = i+1;
+
+				peer_list[pred_id].successor[0].chord_id = peer_list[suc_id].chord_id;
+				strcpy(peer_list[pred_id].successor[0].ip_addr,peer_list[suc_id].ip_addr);
+				peer_list[pred_id].successor[0].portnum = peer_list[suc_id].portnum;
+
+				peer_list[suc_id].pred.chord_id = peer_list[pred_id].chord_id;
+				strcpy(peer_list[suc_id].pred.ip_addr,peer_list[pred_id].ip_addr);
+				peer_list[suc_id].pred.portnum = peer_list[pred_id].portnum;
+				
+				break;
+			}
+		}
+		for(j=i+1;j<MAX_NUM_OF_PEERS;j++){
+					
+			peer_list[j-1].chord_id = peer_list[j].chord_id;
+			strcpy(peer_list[j-1].ip_addr,peer_list[j].ip_addr);
+			peer_list[j-1].portnum = peer_list[j].portnum;
+
+			for(i=0;i<2;i++) {
+				peer_list[j-1].successor[i].chord_id = peer_list[j].successor[i].chord_id;
+				strcpy(peer_list[j-1].successor[i].ip_addr,peer_list[j].successor[i].ip_addr);
+				peer_list[j-1].successor[i].portnum = peer_list[j].successor[i].portnum;
+			}
+
+			for(i=0;i<3;i++){
+				peer_list[j-1].finger[i].finger_id = peer_list[j].finger[i].finger_id;
+				peer_list[j-1].finger[i].finger_node = peer_list[j].finger[i].finger_node;
+			}
+
+			peer_list[j-1].pred.chord_id = peer_list[j].pred.chord_id;
+			strcpy(peer_list[j-1].pred.ip_addr,peer_list[j].pred.ip_addr);
+			peer_list[j-1].pred.portnum = peer_list[j].pred.portnum;
+		}
+
+		peer_list[j-1].chord_id = -1;
+		strcpy(peer_list[j-1].ip_addr,"");
+		peer_list[j-1].portnum = -1;
+
+
+		printf("Send NodeIdentiy msg to Successor of deleted node\n");
+                sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, suc.chord_id, suc.successor[0].chord_id, suc.successor[0].ip_addr, suc.successor[0].portnum, suc.pred.chord_id, suc.pred.ip_addr, suc.pred.portnum);
+               	strcpy(msg_type, "NodeIdentity");
+	        send_message(suc.ip_addr, suc.portnum, msg_type, sendbuf);
+		
+		printf("Send NodeIdentiy msg Predecessor of the deleted node\n");
+                sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred.chord_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, pred.chord_id, pred.successor[0].chord_id, pred.successor[0].ip_addr, pred.successor[0].portnum, pred.pred.chord_id, pred.pred.ip_addr, pred.pred.portnum);
+               	strcpy(msg_type, "NodeIdentity");
+	        send_message(pred.ip_addr, pred.portnum, msg_type, sendbuf);
+
 	} else if ( strcmp(msg_type, "PrintRFCDb")==0 ) {
 
 	        printf("The RFC db at this node \n");
 	        print_RFC_Database();
 
 	}
+
 	else if(strcmp(msg_type, "GetRFC") == 0 ){ // Request for the final Server who HAS the RFC
 		//this message will build the response with ACTUAL body of RFC.
 		char *w, *u, *v;
@@ -1334,6 +1544,38 @@ void * handle_messages(void *args)
 			fflush(stdout);
 		}
 
+	} else if(strcmp(msg_type, "PeerExit") == 0) {
+		RFC_db_rec *p;
+		if(peer_info.chord_id != 0){
+			char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
+			int count=0;
+			strcpy(listbuf, "");
+	
+			if ( rfc_db_head ) { 		
+				p = rfc_db_head;
+				do {
+					sprintf(tmpbuf, "%d:%d:%s\n", p->key, p->value, p->RFC_title);
+					strcat(listbuf, tmpbuf);
+					p = p->next;
+					count += 1;
+				} while ( p!= rfc_db_head ); 
+			}
+			new_head = rfc_db_head;
+			fflush(stdout);
+
+			//Build NodeList message
+                	sprintf(sendlistbuf, "POST AddNodeList %s\nIP:%s\nPortnum:%d\ncount:%d\n%s", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum, count, listbuf);
+               		strcpy(msg_type, "AddNodeList");
+
+			strcpy(ip_addr,peer_info.successor[0].ip_addr);
+			portnum = peer_info.successor[0].portnum;
+
+                	send_message(ip_addr, portnum, msg_type, sendlistbuf);
+
+			printf("AddNodeList Message sent: to the successor %d by leaving node %d \n", peer_info.successor[0].chord_id, peer_info.chord_id);
+			
+		}
+		else	printf("Peer0 can not Exit\n");
 	}
 
 }
@@ -1487,7 +1729,8 @@ void server_listen()
 			printf("Recv error! \n");
 			exit(-1);
 		} else if ( ret == 0) {
-			goto close;
+			close(client);
+			continue;
 		}
 
 		pthread_t thread_id;
@@ -1511,7 +1754,6 @@ void server_listen()
 //		handle_messages(msg_type, msg, client);
 
 		pthread_join(thread_id,NULL);
-close:
 		close(client);
 	}
 
