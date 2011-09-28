@@ -309,7 +309,9 @@ void populate_public_ip()
 
 	struct ifaddrs *myaddrs, *ifa;
 	void *in_addr;
-	char buf[64];
+	char buf[64], intf[128];
+
+	strcpy(peer_info.iface_name, "");
 
 	if(getifaddrs(&myaddrs) != 0) {
 		printf("getifaddrs failed! \n");
@@ -344,6 +346,10 @@ void populate_public_ip()
 
 		if (inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf))) {
 			if ( ifa->ifa_addr->sa_family == AF_INET && strcmp(ifa->ifa_name, "lo")!=0 ) {
+				printf("\nDo you want the chord_peer to bind to %s interface?(y/n): ", ifa->ifa_name);
+				scanf("%s", intf);
+				if ( strcmp(intf, "n") == 0 )
+					continue;
 				sprintf(peer_info.ip_addr, "%s", buf);
 				sprintf(peer_info.iface_name, "%s", ifa->ifa_name);
 			}
@@ -351,10 +357,13 @@ void populate_public_ip()
 	}
 
 	freeifaddrs(myaddrs);
+	
+	if ( strcmp(peer_info.iface_name, "") == 0 ) {
+		printf("Either no Interface is up or you did not select any interface ..... \nchord_peer Exiting .... \n\n");
+		exit(0);
+	}
 
-	#ifdef DEBUG_FLAG
-	printf("My public interface and IP is:  %s %s\n", peer_info.iface_name, peer_info.ip_addr);
-	#endif
+	 printf("\n\nMy public interface and IP is:  %s %s\n\n", peer_info.iface_name, peer_info.ip_addr);
 
 }
 
@@ -379,6 +388,7 @@ void populate_port_num()
          */
         while (bind(well_known_socket, (struct sockaddr *) &sock_server, sizeof(sock_server)) == -1) {
                 portnum = rand() % ( (65535-1024) + 1024);
+		portnum = generate_random_number(65400, 65500);
                 sock_server.sin_port = htons(portnum);
         }
 
@@ -460,7 +470,7 @@ void populate_random_port_num()
 {
 
         struct sockaddr_in sock_server;
-	rand_portnum = 50000;
+	rand_portnum = 65400;
 
         if ((rand_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
                 printf("error in socket creation");
@@ -474,6 +484,7 @@ void populate_random_port_num()
 
         while (bind(rand_sock, (struct sockaddr *) &sock_server, sizeof(sock_server)) == -1) {
                 rand_portnum = rand() % ( (65535-1024) + 1024);
+		rand_portnum = generate_random_number(65400, 65500);
                 sock_server.sin_port = htons(rand_portnum);
         }
 

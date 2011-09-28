@@ -5,7 +5,7 @@
 #define TRUE 1
 
 #define MAX_CHORD_ID 1023
-#define CHORD_PORT 5000
+#define CHORD_PORT 65400
 
 #define RFC_TITLE_LEN_MAX 512
 #define RFC_BODY_LEN_MAX 1 << 20
