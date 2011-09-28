@@ -10,7 +10,7 @@
 #define RFC_TITLE_LEN_MAX 512
 #define RFC_BODY_LEN_MAX 1 << 20
 #define RFC_PATH "./sample_RFCs/"
-#define RFC_NUM_MAX 100
+#define RFC_NUM_MAX 50
 
 #define MAX_NUM_OF_PEERS 10
 
