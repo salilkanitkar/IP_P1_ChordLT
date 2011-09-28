@@ -12,11 +12,15 @@ Chord Peer <-> Peer Messages
 7) GetRFC
 8) ForwardGet
 9) GetFinger
+10) PutKey
+11) RemoveNode
+12) ExitNow
 
 Chord Peer <-> Client Messages ->
 1) PrintRFCDb
 2) PeerDetails
 3) FetchRFC
+4) PeerExit
 
 Message Types and formats -->
 1) FetchRFC

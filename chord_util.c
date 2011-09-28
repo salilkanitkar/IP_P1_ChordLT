@@ -1241,12 +1241,23 @@ void * handle_messages(void *args)
 		printf("RFC Db LL created! \n");
 		print_details(peer_info);
 		
+		strcpy(sendbuf,"");
+               	sprintf(sendbuf, "POST ExitNow %s", PROTOCOL_STR);
+        	strcpy(msg_type, "ExitNow");
+
+		send_message(peer_info.pred.ip_addr, peer_info.pred.portnum, msg_type, sendbuf); 
+
 		/*create a RemoveNode Message for the predecessor of this node and send to P0*/
+		strcpy(sendbuf,"");
                	sprintf(sendbuf, "GET RemoveNode %s\nChord id:%d\nIP:%s\nPortnum:%d", PROTOCOL_STR, peer_info.pred.chord_id, peer_info.pred.ip_addr, peer_info.pred.portnum);
         	strcpy(msg_type, "RemoveNode");
 
 		send_message(ip_p0, port_p0, msg_type, sendbuf); 
 		printf("RemoveNode Message sent to P0 is\n %s \n", sendbuf);
+
+	} else if(strcmp(msg_type,"ExitNow")==0){
+		printf("The removed node is exiting\n");
+		exit(0);
 		
 	} else if (strcmp(msg_type,"RemoveNode")==0) {
 				
