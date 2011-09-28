@@ -69,6 +69,9 @@ extern peer_info_t peer_info;
 extern peer_info_t peer_list[10];
 extern RFC_db_rec *rfc_db_head;
 
+extern char ip_p0[];
+extern int port_p0;
+
 extern void print_details();
 extern void populate_RFC_Directory(char [][RFC_TITLE_LEN_MAX]);
 extern void generate_RFC_Database(int,int,char [][RFC_TITLE_LEN_MAX]);

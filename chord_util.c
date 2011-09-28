@@ -1114,7 +1114,7 @@ void * handle_messages(void *args)
 		print_details(peer_info);
 
 
-	} else if(strcmp(msg_type, "AddNodeList")==0) {
+	} else if(strcmp(msg_type, "PutKey")==0) {
 
 		int count, cnt=0, key, value, k=0, m, portnum;
 		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500], ip_addr[128];
@@ -1231,17 +1231,10 @@ void * handle_messages(void *args)
 		print_details(peer_info);
 		
 		/*create a RemoveNode Message for the predecessor of this node and send to P0*/
-		/*QUESTION:Do we have details of P0 at this point??*/
-
-		//Some code here
-
-		/*We need to write a code above which will save IP address and port number of P0 in ip_addr and portnum*/
-		
                	sprintf(sendbuf, "GET RemoveNode %s\nChord id:%d\nIP:%s\nPortnum:%d", PROTOCOL_STR, peer_info.pred.chord_id, peer_info.pred.ip_addr, peer_info.pred.portnum);
-         	strcpy(msg_type, "RemoveNode");
+        	strcpy(msg_type, "RemoveNode");
 
-//              send_message(ip_addr, portnum, msg_type, sendbuf); Line commented since ip_addr and portnum is not setup
-
+		send_message(ip_p0, port_p0, msg_type, sendbuf); 
 		printf("RemoveNode Message sent to P0 is\n %s \n", sendbuf);
 		
 	} else if (strcmp(msg_type,"RemoveNode")==0) {
@@ -1249,6 +1242,7 @@ void * handle_messages(void *args)
 		peer_info_t suc,pred;
 		int pred_id,suc_id;
 		int i,j;
+		int ret;
 	
                 needle = strtok(msg, "\n");
                 needle = strtok(NULL, "\n");
@@ -1283,6 +1277,30 @@ void * handle_messages(void *args)
 				strcpy(peer_list[suc_id].pred.ip_addr,peer_list[pred_id].ip_addr);
 				peer_list[suc_id].pred.portnum = peer_list[pred_id].portnum;
 				
+				suc.chord_id = peer_list[suc_id].chord_id;
+				strcpy(suc.ip_addr,peer_list[suc_id].ip_addr);
+				suc.portnum = peer_list[suc_id].portnum;
+
+				suc.successor[0].chord_id = peer_list[suc_id].successor[0].chord_id;
+				strcpy(suc.successor[0].ip_addr,peer_list[suc_id].successor[0].ip_addr);
+				suc.successor[0].portnum = peer_list[suc_id].successor[0].portnum;
+
+				suc.pred.chord_id = peer_list[suc_id].pred.chord_id;
+				strcpy(suc.pred.ip_addr,peer_list[suc_id].pred.ip_addr);
+				suc.pred.portnum = peer_list[suc_id].pred.portnum;
+
+				pred.chord_id = peer_list[pred_id].chord_id;
+				strcpy(pred.ip_addr,peer_list[pred_id].ip_addr);
+				pred.portnum = peer_list[pred_id].portnum;
+
+				pred.successor[0].chord_id = peer_list[pred_id].successor[0].chord_id;
+				strcpy(pred.successor[0].ip_addr,peer_list[pred_id].successor[0].ip_addr);
+				pred.successor[0].portnum = peer_list[pred_id].successor[0].portnum;
+
+				pred.pred.chord_id = peer_list[pred_id].pred.chord_id;
+				strcpy(pred.pred.ip_addr,peer_list[pred_id].pred.ip_addr);
+				pred.pred.portnum = peer_list[pred_id].pred.portnum;
+				
 				break;
 			}
 		}
@@ -1312,16 +1330,36 @@ void * handle_messages(void *args)
 		strcpy(peer_list[j-1].ip_addr,"");
 		peer_list[j-1].portnum = -1;
 
-
-		printf("Send NodeIdentiy msg to Successor of deleted node\n");
-                sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, suc.chord_id, suc.successor[0].chord_id, suc.successor[0].ip_addr, suc.successor[0].portnum, suc.pred.chord_id, suc.pred.ip_addr, suc.pred.portnum);
-               	strcpy(msg_type, "NodeIdentity");
-	        send_message(suc.ip_addr, suc.portnum, msg_type, sendbuf);
+		if(suc.chord_id !=0){
+			printf("\nSend NodeIdentiy msg to Successor of deleted node\n");
+                	sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, suc.chord_id, suc.successor[0].chord_id, suc.successor[0].ip_addr, suc.successor[0].portnum, suc.pred.chord_id, suc.pred.ip_addr, suc.pred.portnum);
+               		strcpy(msg_type, "NodeIdentity");
+	        	send_message(suc.ip_addr, suc.portnum, msg_type, sendbuf);
+		}
 		
-		printf("Send NodeIdentiy msg Predecessor of the deleted node\n");
-                sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred.chord_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, pred.chord_id, pred.successor[0].chord_id, pred.successor[0].ip_addr, pred.successor[0].portnum, pred.pred.chord_id, pred.pred.ip_addr, pred.pred.portnum);
-               	strcpy(msg_type, "NodeIdentity");
-	        send_message(pred.ip_addr, pred.portnum, msg_type, sendbuf);
+		if(pred.chord_id != 0){
+			printf("Send NodeIdentiy msg Predecessor of the deleted node\n");
+                	sprintf(sendbuf, "POST NodeIdentity %s\nchord_id:%d\nsuccessor_id:%d\nsuccessor_IP:%s\nsuccessor_Port:%d\npred.chord_id:%d\npred_IP:%s\npred_Port:%d\n", PROTOCOL_STR, pred.chord_id, pred.successor[0].chord_id, pred.successor[0].ip_addr, pred.successor[0].portnum, pred.pred.chord_id, pred.pred.ip_addr, pred.pred.portnum);
+               		strcpy(msg_type, "NodeIdentity");
+	        	send_message(pred.ip_addr, pred.portnum, msg_type, sendbuf);
+		}
+
+		if(suc.chord_id !=0){
+			strcpy(sendbuf, "");
+                	sprintf(sendbuf, "POST FixFingers %s\n", PROTOCOL_STR);
+        	        strcpy(msg_type, "FixFingers");
+	                ret = sync_send_message(suc.ip_addr, suc.portnum, msg_type, sendbuf);
+		}
+
+		if(pred.chord_id != 0){
+			strcpy(sendbuf, "");
+                	sprintf(sendbuf, "POST FixFingers %s\n", PROTOCOL_STR);
+        	        strcpy(msg_type, "FixFingers");
+	                ret = sync_send_message(pred.ip_addr, pred.portnum, msg_type, sendbuf);
+		}
+		printf("Peer with chord id %d removed\n",chord_id);
+		printf("Updated peer List is:\n");
+		print_peer_list();
 
 	} else if ( strcmp(msg_type, "PrintRFCDb")==0 ) {
 
@@ -1547,33 +1585,37 @@ void * handle_messages(void *args)
 	} else if(strcmp(msg_type, "PeerExit") == 0) {
 		RFC_db_rec *p;
 		if(peer_info.chord_id != 0){
-			char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
-			int count=0;
-			strcpy(listbuf, "");
-	
-			if ( rfc_db_head ) { 		
-				p = rfc_db_head;
-				do {
-					sprintf(tmpbuf, "%d:%d:%s\n", p->key, p->value, p->RFC_title);
-					strcat(listbuf, tmpbuf);
-					p = p->next;
-					count += 1;
-				} while ( p!= rfc_db_head ); 
+			if(peer_info.successor[0].chord_id == 0){
+				printf("The successor of this node is P0. Exit for this node can't be triggered from client\n");
 			}
-			new_head = rfc_db_head;
-			fflush(stdout);
-
-			//Build NodeList message
-                	sprintf(sendlistbuf, "POST AddNodeList %s\nIP:%s\nPortnum:%d\ncount:%d\n%s", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum, count, listbuf);
-               		strcpy(msg_type, "AddNodeList");
-
-			strcpy(ip_addr,peer_info.successor[0].ip_addr);
-			portnum = peer_info.successor[0].portnum;
-
-                	send_message(ip_addr, portnum, msg_type, sendlistbuf);
-
-			printf("AddNodeList Message sent: to the successor %d by leaving node %d \n", peer_info.successor[0].chord_id, peer_info.chord_id);
-			
+			else {
+				char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
+				int count=0;
+				strcpy(listbuf, "");
+		
+				if ( rfc_db_head ) { 		
+					p = rfc_db_head;
+					do {
+						sprintf(tmpbuf, "%d:%d:%s\n", p->key, p->value, p->RFC_title);
+						strcat(listbuf, tmpbuf);
+						p = p->next;
+						count += 1;
+					} while ( p!= rfc_db_head ); 
+				}
+				new_head = rfc_db_head;
+				fflush(stdout);
+	
+				//Send PutKey message to the successor 
+                		sprintf(sendlistbuf, "POST PutKey %s\nIP:%s\nPortnum:%d\ncount:%d\n%s", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum, count, listbuf);
+               			strcpy(msg_type, "PutKey");
+	
+				strcpy(ip_addr,peer_info.successor[0].ip_addr);
+				portnum = peer_info.successor[0].portnum;
+		
+                		send_message(ip_addr, portnum, msg_type, sendlistbuf);
+	
+				printf("PutKey Message sent: to the successor %d by leaving node %d \n", peer_info.successor[0].chord_id, peer_info.chord_id);
+			}	
 		}
 		else	printf("Peer0 can not Exit\n");
 	}

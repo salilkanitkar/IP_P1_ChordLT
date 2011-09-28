@@ -15,6 +15,9 @@ int well_known_port=0;
 int well_known_listen_socket=-1;
 int well_known_listen_port=0;
 
+char ip_p0[128];
+int port_p0;
+
 RFC_db_rec *rfc_db_head = 0;
 peer_info_t peer_info;
 peer_info_t peer_list[10];
@@ -23,8 +26,7 @@ void build_RegisterNode_msg();
 
 int main(int argc, char *argv[])
 {
-	int i,port;
-	char ip[128];
+	int i;
 	char RFC_Dir[RFC_NUM_MAX][RFC_TITLE_LEN_MAX], buf[BUFLEN];
 	
 
@@ -37,10 +39,10 @@ int main(int argc, char *argv[])
 	} else if ( argc == 3 && (strcmp(argv[2], "5000")==0) ) {
 
 		/* This is a Peer Node */
-		strcpy(ip,argv[1]);
-		port = atoi(argv[2]);
+		strcpy(ip_p0,argv[1]);
+		port_p0 = atoi(argv[2]);
 		is_p0 = FALSE;
-		if ( test_if_P0_alive(ip, port) == -1 ) {
+		if ( test_if_P0_alive(ip_p0, port_p0) == -1 ) {
 			printf("Node P0 is not up yet! \nStart up P0 via './chord_peer --start' and then start peers\n");
 			exit(-1);
 		}		
@@ -112,7 +114,7 @@ int main(int argc, char *argv[])
 
 		initialize_peer_info();
 
-		printf("P0s Parameters: %s \t  %d\n",ip,port);
+		printf("P0s Parameters: %s \t  %d\n",ip_p0,port_p0);
 		populate_public_ip();
 		well_known_port = CHORD_PORT;
 		populate_port_num();
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
 		build_RegisterNode_msg();
 		strcpy(msg_type, "RegisterNode");
 		strcpy(buf, msg);
-		send_message(ip, port, msg_type, buf);
+		send_message(ip_p0, port_p0, msg_type, buf);
 		printf("RegisterNode Message sent to P0\n");		
 	
 		server_listen();
