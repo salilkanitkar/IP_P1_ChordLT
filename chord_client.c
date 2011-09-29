@@ -150,15 +150,16 @@ int main()
         		}
 
 			FILE *fp = fopen(rfc_title, "wb");
-			char recvbuf[BUFLEN], *cp;
+			char recvbuf[1], *cp;
 			int bytes_read;
 
 			while (1) {
 
-				bytes_read = recv(sock, recvbuf, 500, 0);
-				if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) {
-					*cp = '\0';
-					fwrite(recvbuf, 1, bytes_read-7, fp);
+				bytes_read = recv(sock, recvbuf, 1, 0);
+//				if ( (cp = strstr(recvbuf, "FILEEND") ) != NULL ) {
+				if(bytes_read!=1){
+				//	*cp = '\0';
+				//	fwrite(recvbuf, 1, bytes_read-7, fp);
 					break;
 				}
 				fwrite(recvbuf, 1, bytes_read, fp);

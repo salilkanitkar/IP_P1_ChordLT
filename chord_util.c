@@ -248,7 +248,8 @@ printf("Enter generate_RFC_database \n");
 	int rndm;
 	struct timeval ct;
 	int i, rand_arr[RFC_NUM_MAX], k=0;
-//	FILE *fp = fopen()
+	FILE *fp = fopen("RFCValuesList.txt","w");
+	char valuelist[1000];
 	RFC_db_rec *p, *q;
   
 	gettimeofday(&ct, NULL);
@@ -276,6 +277,8 @@ printf("Enter generate_RFC_database \n");
 		p->key = (int)rndm % 1024;
         	p->value = (int)rndm;
 		strcpy(p->RFC_title, RFC_Dir[i]);
+		sprintf(valuelist,"Title: %s \t Value: %d\n",p->RFC_title,p->value);
+		fwrite(valuelist,1,strlen(valuelist),fp);
         	sprintf(p->RFC_body, "ID:%d Value:%d \n<<RFC Text Goes Here>>", p->key, p->value);
 
 		if ( rfc_db_head == NULL) {
@@ -287,7 +290,7 @@ printf("Enter generate_RFC_database \n");
 		}
 		p->next = rfc_db_head;
 	}	
-
+	fclose(fp);
 #ifdef DEBUG_FLAG
 printf("Exit generate_RFC_database \n");
 #endif
@@ -762,12 +765,12 @@ void * handle_messages(void *args)
 		
 		strcpy(filename, "");
 		strcat(filename, title);
-			
+		char xxx[1];	
 		fp = fopen(filename, "rb");
+		printf("File to be SENT: %s\n",filename);
+		while (	( bytes_read = fread(xxx, sizeof(char), 1, fp) ) > 0) {
 
-		while (	( bytes_read = fread(sendbuf, sizeof(char), 500, fp) ) > 0) {
-
-			if ( send(client_sock, sendbuf, bytes_read, 0) < 0 ) {
+			if ( send(client_sock, xxx, bytes_read, 0) < 0 ) {
 				printf("Error in sending file data! \n");
 				exit(-1);
 			}
@@ -995,7 +998,7 @@ void * handle_messages(void *args)
 		}
 		
 
-		char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
+		char listbuf[60000], tmpbuf[60000], sendlistbuf[60000];
 		int count=0;
 		strcpy(listbuf, "");
 	
@@ -1020,7 +1023,7 @@ void * handle_messages(void *args)
 	else if(strcmp(msg_type, "NodeList")==0) {
 
 		int count, cnt=0, key, value, k=0, m, portnum;
-		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500], ip_addr[128];
+		char title[128], *w, dbbuf[60000], db[60000], t1[128], t2[60000], ip_addr[128];
 		RFC_db_rec *node_p, *node_q;
 
 		strcpy(dbbuf, msg);
@@ -1128,7 +1131,7 @@ void * handle_messages(void *args)
 	} else if(strcmp(msg_type, "PutKey")==0) {
 
 		int count, cnt=0, key, value, k=0, m, portnum;
-		char title[128], *w, dbbuf[15000], db[15000], t1[128], t2[1500], ip_addr[128];
+		char title[128], *w, dbbuf[60000], db[60000], t1[128], t2[60000], ip_addr[128];
 		RFC_db_rec *node_p, *node_q, *old_head;
 
 		strcpy(dbbuf, msg);
@@ -1528,7 +1531,7 @@ void * handle_messages(void *args)
 	} else if (strcmp(msg_type, "PeerDetails") == 0) {
 
 		int i;
-		char tmpbuf[1500];
+		char tmpbuf[60000];
 		printf("In Get PeerDetails\n");
 		sprintf(sendbuf,"POST PeerDetais %s\n",PROTOCOL_STR);
 		for(i=0;i<MAX_NUM_OF_PEERS;i++)	{
@@ -1611,7 +1614,7 @@ void * handle_messages(void *args)
 				printf("The successor of this node is P0. Exit for this node can't be triggered from client\n");
 			}
 			else {
-				char listbuf[15000], tmpbuf[1500], sendlistbuf[15000];
+				char listbuf[60000], tmpbuf[60000], sendlistbuf[60000];
 				int count=0;
 				strcpy(listbuf, "");
 		

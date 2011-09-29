@@ -4,7 +4,7 @@
 
 #include "chord_server.h"
 
-#define BUFLEN 1500
+#define BUFLEN 60000
 
 char PROTOCOL_STR[128] = "Chord-LT/1.0";
 char msg[BUFLEN];

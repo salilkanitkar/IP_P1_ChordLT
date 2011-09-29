@@ -1,7 +1,7 @@
 #ifndef CHORD_CLIENT
 #define CHORD_CLIENT
 
-#define BUFLEN 1500
+#define BUFLEN 60000
 
 typedef struct peer_track_t_ {
         int chord_id;

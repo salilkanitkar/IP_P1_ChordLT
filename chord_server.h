@@ -84,14 +84,14 @@ extern void initalize_peer_list();
 extern int next_free_position();
 extern int check_chordID(int);
 extern int generate_chordID(int,int);
-extern void put_in_peer_list(int , char [128], int );
+extern void put_in_peer_list(int , char [], int );
 
 extern void populate_public_ip();
 extern void populate_port_num();
 
 extern void server_listen();
-extern int test_if_P0_alive(char [128], int);
-extern void send_message(char [128], int , char [128], char [1500]);
+extern int test_if_P0_alive(char [], int);
+extern void send_message(char [], int , char [], char []);
 extern peer_info_t setup_successor(int);
 extern RFC_db_rec * find_keys_to_transfer(int, int);
 extern void * lookup(); //will take void * as parami
