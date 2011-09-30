@@ -21,7 +21,6 @@ for i  in $rfc_list; do
 	src_file_name="./sample_RFCs/$i"
 	dest_file_name="$j$i"
 	/bin/cp  $src_file_name ./p0/$dest_file_name
-#	/bin/cp  $src_file_name ./p0/$j
 	j=`expr $j + 1`
 done
 
