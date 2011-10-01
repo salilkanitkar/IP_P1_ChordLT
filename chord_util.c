@@ -916,8 +916,10 @@ void * handle_messages(void *args)
 
 		if ( !db_init ) {
 			/* Build GetKey to be sent to Successor of current peer_info */
+			strcpy(msg, "");
 			sprintf(msg, "GET GetKey %s\nIP:%s\nPort:%d\nChord-Id:%d\n", PROTOCOL_STR, peer_info.ip_addr, peer_info.portnum, peer_info.chord_id);
 	        	strcpy(msg_type, "GetKey");
+			strcpy(sendbuf, "");
 		        strcpy(sendbuf, msg);
 		        send_message(peer_info.successor[0].ip_addr, peer_info.successor[0].portnum, msg_type, sendbuf);
 	        	printf("%s Message sent from Peer with ChordID %d to its successor with ChordID %d\n", msg_type, peer_info.chord_id, peer_info.successor[0].chord_id);
@@ -1515,7 +1517,34 @@ void * handle_messages(void *args)
 
 		        close(fwd_sock);
         
-                } else {
+		} else if ( peer_info.finger[1].finger_node.chord_id != peer_info.successor[0].chord_id && is_in_between(peer_info.finger[0].finger_node.chord_id, peer_info.finger[1].finger_node.chord_id, rfc_value%1024) ) {
+			printf("Forwards are required to fetch this RFC!!! \n");
+			rand_sock = 0;
+			rand_portnum = 0; 
+			populate_random_port_num();
+			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, peer_info.ip_addr, rand_portnum, val);
+        	        strcpy(msg_type, "ForwardGet");
+                	send_message(peer_info.finger[1].finger_node.ip_addr, peer_info.finger[1].finger_node.portnum, msg_type, sendbuf);
+			peer_info_t t;
+			t = listen_on_random_port();
+			printf("The Requested RFC is at Node %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+			get_rfc(title, val, t.ip_addr, t.portnum);
+			send_RFC_reply = 1;
+
+		} else if ( peer_info.finger[2].finger_node.chord_id != peer_info.successor[0].chord_id && is_in_between(peer_info.finger[1].finger_node.chord_id, peer_info.finger[2].finger_node.chord_id, rfc_value%1024) ) {
+			printf("Forwards are required to fetch this RFC!!! \n");
+			rand_sock = 0;
+			rand_portnum = 0; 
+			populate_random_port_num();
+			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, peer_info.ip_addr, rand_portnum, val);
+        	        strcpy(msg_type, "ForwardGet");
+                	send_message(peer_info.finger[2].finger_node.ip_addr, peer_info.finger[2].finger_node.portnum, msg_type, sendbuf);
+			peer_info_t t;
+			t = listen_on_random_port();
+			printf("The Requested RFC is at Node %d %s %d\n", t.chord_id, t.ip_addr, t.portnum);
+			get_rfc(title, val, t.ip_addr, t.portnum);
+			send_RFC_reply = 1;			
+		} else {
 			/* Send ForwardGet to my successor. Put the ip_addr and portnum received in that message */
 			strcpy(sendbuf, "");
 			sprintf(sendbuf, "GET ForwardGet %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, ip_addr, portnum, rfc_value);
@@ -1597,7 +1626,35 @@ void * handle_messages(void *args)
 
 		        close(fwd_sock);
         
-                } else {
+                } else if ( peer_info.successor[0].chord_id == 0) {
+                        /* My Successor has the RFC. Reply back to the requesting peer the chord id of my successor */
+		        struct sockaddr_in fwd_sock_client;
+		        int fwd_sock, fwd_slen = sizeof(fwd_sock_client), fwd_ret;
+			char fwd_buf[BUFLEN] = "";
+			sprintf(fwd_buf, "%d:%s:%d:", peer_info.successor[0].chord_id, peer_info.successor[0].ip_addr, peer_info.successor[0].portnum);
+			printf("Sending %s\n", fwd_buf);
+
+		        fwd_sock = socket(AF_INET, SOCK_STREAM, 0);
+		        memset((char *) &fwd_sock_client, 0, sizeof(fwd_sock_client));
+
+		        fwd_sock_client.sin_family = AF_INET;
+		        fwd_sock_client.sin_port = htons(portnum);
+		        fwd_sock_client.sin_addr.s_addr = inet_addr(ip_addr);
+
+		        fwd_ret = connect(fwd_sock, (struct sockaddr *) &fwd_sock_client, fwd_slen);
+		        if (fwd_ret == -1) {
+                		printf("Connect failed! Check the IP and port number of the Sever! \n");
+		                exit(-1);
+		        }
+
+		        if ( send(fwd_sock, fwd_buf, BUFLEN, 0) == -1 ) {
+		                printf("send failed ");
+		                exit(-1);
+		        }
+
+		        close(fwd_sock);
+
+		} else {
 			/* Send GetFinger to my successor. Put the ip_addr and portnum received in that message */
 			strcpy(sendbuf, "");
 			sprintf(sendbuf, "GET GetFinger %s\nIP:%s\nPortnum:%d\nRFC-value:%d\n", PROTOCOL_STR, ip_addr, portnum, start);
@@ -1726,6 +1783,7 @@ RFC_db_rec * find_keys_to_transfer(int lower_bound, int upper_bound)
 
 	if ( tmp == NULL )
 		return NULL;
+
 
 	do {
 		if ( is_in_between(lower_bound, upper_bound, tmp->key) ) {
