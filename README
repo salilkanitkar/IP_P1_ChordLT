@@ -1,6 +1,18 @@
-sskanitk
-sssane
+Problem Definition
+-------------------
+Implementation of a (lite) version of Chord Distributed hash table system.
+We have developed a P2P system for downloading RFCs.
+Every communication is done via messages that resemble HTTP-like message formats.
+ 
+Team Members
+-------------
+1) Salil Kanitkar : sskanitk@ncsu.edu
+2) Sagar Sane
+3) Mayur Awagadhe
+4) Sagar Natekar
 
+Types of Messages
+-------------------
 Chord Peer <-> Peer Messages
 
 1) RegisterNode
