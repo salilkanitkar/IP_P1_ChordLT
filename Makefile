@@ -32,7 +32,7 @@ client:
 
 clean:
 	rm -f $(OBJS) chord_peer chord_client *~
-	rm -fr ./p0/ ./p1/ ./p2/ ./p3/ ./p4/ ./p5/ ./p6/ ./p7 ./p8 ./p9/
+	rm -fr *~ ./p0/ ./p1/ ./p2/ ./p3/ ./p4/ ./p5/ ./p6/ ./p7 ./p8 ./p9/
 tags:
 	find . -name "*.[cChH]" | xargs ctags
 	find . -name "*.[cChH]" | etags -
